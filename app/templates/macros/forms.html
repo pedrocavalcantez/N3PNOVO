@@ -1,0 +1,47 @@
+{% macro render_field(field, label_class='', input_class='form-control') %}
+<div class="mb-3">
+  {{ field.label(class_=label_class) }} {% if field.type == 'BooleanField' %} {{
+  field(class_='form-check-input ' + input_class) }} {% else %} {{
+  field(class_=input_class) }} {% endif %} {% if field.errors %} {% for error in
+  field.errors %}
+  <div class="invalid-feedback d-block">{{ error }}</div>
+  {% endfor %} {% endif %} {% if field.description %}
+  <small class="form-text text-muted">{{ field.description }}</small>
+  {% endif %}
+</div>
+{% endmacro %} {% macro render_form(form, action_url='', method='post',
+extra_classes='', submit_text='Enviar') %}
+<form
+  action="{{ action_url }}"
+  method="{{ method }}"
+  class="{{ extra_classes }}"
+  enctype="multipart/form-data"
+>
+  {{ form.csrf_token }} {% for field in form if field.type != 'CSRFTokenField'
+  %} {{ render_field(field) }} {% endfor %}
+  <button type="submit" class="btn btn-primary">{{ submit_text }}</button>
+</form>
+{% endmacro %} {% macro render_search_field(field, label_class='',
+input_class='form-control', placeholder='') %}
+<div class="position-relative">
+  {{ field.label(class_=label_class) }} {{ field(class_=input_class,
+  placeholder=placeholder) }}
+  <div class="search-results d-none">
+    <!-- Search results will be dynamically populated here -->
+  </div>
+</div>
+{% endmacro %} {% macro render_food_row(food) %}
+<tr id="food-{{ food.id }}">
+  <td>{{ food.name }}</td>
+  <td>{{ "%.1f"|format(food.quantity) }}g</td>
+  <td>{{ "%.1f"|format(food.calories) }}</td>
+  <td>{{ "%.1f"|format(food.proteins) }}g</td>
+  <td>{{ "%.1f"|format(food.carbs) }}g</td>
+  <td>{{ "%.1f"|format(food.fats) }}g</td>
+  <td>
+    <button class="btn btn-sm btn-danger" onclick="deleteFood({{ food.id }})">
+      <i class="fas fa-trash"></i>
+    </button>
+  </td>
+</tr>
+{% endmacro %}

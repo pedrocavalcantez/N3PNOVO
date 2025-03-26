@@ -1,0 +1,114 @@
+{% extends "base.html" %} {% from "macros/forms.html" import render_form %} {%
+block title %}Perfil - N3P{% endblock %} {% block content %}
+<div class="container">
+  <div class="row">
+    <!-- User Information -->
+    <div class="col-md-8">
+      <div class="card mb-4">
+        <div class="card-header">
+          <h4 class="mb-0">Informações Pessoais</h4>
+        </div>
+        <div class="card-body">
+          {{ render_form(form, url_for('main.profile'), submit_text='Atualizar
+          Perfil') }}
+        </div>
+      </div>
+    </div>
+
+    <!-- Nutritional Goals -->
+    <div class="col-md-4">
+      <div class="card">
+        <div class="card-header">
+          <h4 class="mb-0">Metas Nutricionais</h4>
+        </div>
+        <div class="card-body">
+          <div class="mb-4">
+            <h5>Calorias Diárias</h5>
+            <h2 class="text-primary">
+              {{ "%.1f"|format(user_goals.calories) }} kcal
+            </h2>
+            <small class="text-muted"
+              >Baseado no seu objetivo: {{ user.get_objetivo_display() }}</small
+            >
+          </div>
+          <div class="mb-3">
+            <h6>Distribuição de Macronutrientes</h6>
+            <div class="progress mb-2" style="height: 25px">
+              <div
+                class="progress-bar bg-success"
+                role="progressbar"
+                style="width: 30%"
+                aria-valuenow="30"
+                aria-valuemin="0"
+                aria-valuemax="100"
+              >
+                Proteínas
+              </div>
+              <div
+                class="progress-bar bg-warning"
+                role="progressbar"
+                style="width: 45%"
+                aria-valuenow="45"
+                aria-valuemin="0"
+                aria-valuemax="100"
+              >
+                Carboidratos
+              </div>
+              <div
+                class="progress-bar bg-danger"
+                role="progressbar"
+                style="width: 25%"
+                aria-valuenow="25"
+                aria-valuemin="0"
+                aria-valuemax="100"
+              >
+                Gorduras
+              </div>
+            </div>
+            <div class="row text-center">
+              <div class="col">
+                <small class="d-block text-success">Proteínas</small>
+                <strong>{{ "%.1f"|format(user_goals.proteins) }}g</strong>
+              </div>
+              <div class="col">
+                <small class="d-block text-warning">Carboidratos</small>
+                <strong>{{ "%.1f"|format(user_goals.carbs) }}g</strong>
+              </div>
+              <div class="col">
+                <small class="d-block text-danger">Gorduras</small>
+                <strong>{{ "%.1f"|format(user_goals.fats) }}g</strong>
+              </div>
+            </div>
+          </div>
+        </div>
+      </div>
+    </div>
+  </div>
+</div>
+{% endblock %} {% block extra_js %}
+<script>
+  document.addEventListener("DOMContentLoaded", function () {
+    // Format height input to show only one decimal place
+    const alturaInput = document.querySelector('input[name="altura"]');
+    if (alturaInput) {
+      alturaInput.addEventListener("input", function (e) {
+        const value = parseFloat(e.target.value);
+        if (!isNaN(value)) {
+          e.target.value = value.toFixed(1);
+        }
+      });
+    }
+
+    // Format weight input to show only one decimal place
+    const pesoInput = document.querySelector('input[name="peso"]');
+    if (pesoInput) {
+      pesoInput.addEventListener("input", function (e) {
+        const value = parseFloat(e.target.value);
+        if (!isNaN(value)) {
+          e.target.value = value.toFixed(1);
+        }
+      });
+    }
+  });
+</script>
+{% endblock %}

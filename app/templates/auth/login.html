@@ -1,0 +1,32 @@
+{% extends "base.html" %} {% block title %}Login{% endblock %} {% block content
+%}
+<div class="auth-container">
+  <h2 class="text-center mb-4">Login</h2>
+  <form method="POST">
+    {{ form.csrf_token }}
+    <div class="mb-3">
+      {{ form.username.label(class="form-label") }} {{
+      form.username(class="form-control") }} {% if form.username.errors %} {%
+      for error in form.username.errors %}
+      <div class="text-danger">{{ error }}</div>
+      {% endfor %} {% endif %}
+    </div>
+    <div class="mb-3">
+      {{ form.password.label(class="form-label") }} {{
+      form.password(class="form-control") }} {% if form.password.errors %} {%
+      for error in form.password.errors %}
+      <div class="text-danger">{{ error }}</div>
+      {% endfor %} {% endif %}
+    </div>
+    <div class="d-grid gap-2">
+      <button type="submit" class="btn btn-primary">Entrar</button>
+      <a href="{{ url_for('auth.signup') }}" class="btn btn-secondary"
+        >Criar Conta</a
+      >
+      <a href="{{ url_for('main.guest') }}" class="btn btn-guest"
+        >Entrar como Visitante</a
+      >
+    </div>
+  </form>
+</div>
+{% endblock %}

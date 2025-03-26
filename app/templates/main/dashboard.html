@@ -1,0 +1,232 @@
+{% extends "base.html" %} {% from "macros/forms.html" import render_food_row %}
+{% block title %}Dashboard - N3P{% endblock %} {% block content %}
+<div class="container">
+  <!-- Nutritional Summary -->
+  <div class="row mb-4">
+    <div class="col-md-12">
+      <div class="card">
+        <div class="card-header">
+          <h4 class="mb-0">Resumo Nutricional do Dia</h4>
+        </div>
+        <div class="card-body">
+          <div class="row">
+            <div class="col-md-6">
+              <div class="progress-wrapper mb-3">
+                <div
+                  class="d-flex justify-content-between align-items-center mb-1"
+                >
+                  <span>Calorias</span>
+                  <span
+                    >{{ "%.1f"|format(daily_totals.calories) }} / {{
+                    "%.1f"|format(user_goals.calories) }} kcal</span
+                  >
+                </div>
+                <div class="progress">
+                  <div
+                    class="progress-bar bg-primary"
+                    role="progressbar"
+                    style="width: {% if user_goals.calories > 0 %}{{ [100, (daily_totals.calories / user_goals.calories * 100)|round]|min }}{% else %}0{% endif %}%"
+                  ></div>
+                </div>
+              </div>
+            </div>
+            <div class="col-md-6">
+              <div class="row">
+                <div class="col-md-4">
+                  <div class="nutrient-box text-center p-2 rounded mb-2">
+                    <h6>Proteínas</h6>
+                    <p class="mb-0">
+                      {{ "%.1f"|format(daily_totals.proteins) }}g
+                    </p>
+                    <small class="text-muted"
+                      >Meta: {{ "%.1f"|format(user_goals.proteins) }}g</small
+                    >
+                  </div>
+                </div>
+                <div class="col-md-4">
+                  <div class="nutrient-box text-center p-2 rounded mb-2">
+                    <h6>Carboidratos</h6>
+                    <p class="mb-0">{{ "%.1f"|format(daily_totals.carbs) }}g</p>
+                    <small class="text-muted"
+                      >Meta: {{ "%.1f"|format(user_goals.carbs) }}g</small
+                    >
+                  </div>
+                </div>
+                <div class="col-md-4">
+                  <div class="nutrient-box text-center p-2 rounded mb-2">
+                    <h6>Gorduras</h6>
+                    <p class="mb-0">{{ "%.1f"|format(daily_totals.fats) }}g</p>
+                    <small class="text-muted"
+                      >Meta: {{ "%.1f"|format(user_goals.fats) }}g</small
+                    >
+                  </div>
+                </div>
+              </div>
+            </div>
+          </div>
+        </div>
+      </div>
+    </div>
+  </div>
+
+  <!-- Meal Sections -->
+  {% for meal_type, meal_name in meal_types.items() %}
+  <div class="row mb-4">
+    <div class="col-md-12">
+      <div class="card">
+        <div
+          class="card-header d-flex justify-content-between align-items-center"
+        >
+          <h5 class="mb-0">{{ meal_name }}</h5>
+          <button
+            class="btn btn-primary btn-sm"
+            onclick="addNewRow('{{ meal_type }}')"
+          >
+            <i class="fas fa-plus me-1"></i>Adicionar Alimento
+          </button>
+        </div>
+        <div class="card-body">
+          <div class="table-responsive">
+            <table class="table table-hover">
+              <thead>
+                <tr>
+                  <th>Alimento</th>
+                  <th>Quantidade</th>
+                  <th>Calorias</th>
+                  <th>Proteínas</th>
+                  <th>Carboidratos</th>
+                  <th>Gorduras</th>
+                  <th>Ações</th>
+                </tr>
+              </thead>
+              <tbody id="{{ meal_type }}-foods">
+                {% for food in meals[meal_type] %} {{ render_food_row(food) }}
+                {% endfor %}
+              </tbody>
+              <tfoot>
+                <tr class="table-secondary">
+                  <td><strong>Total</strong></td>
+                  <td>-</td>
+                  <td>
+                    <strong
+                      >{{ "%.1f"|format(meal_totals[meal_type].calories)
+                      }}</strong
+                    >
+                  </td>
+                  <td>
+                    <strong
+                      >{{ "%.1f"|format(meal_totals[meal_type].proteins)
+                      }}g</strong
+                    >
+                  </td>
+                  <td>
+                    <strong
+                      >{{ "%.1f"|format(meal_totals[meal_type].carbs)
+                      }}g</strong
+                    >
+                  </td>
+                  <td>
+                    <strong
+                      >{{ "%.1f"|format(meal_totals[meal_type].fats) }}g</strong
+                    >
+                  </td>
+                  <td>-</td>
+                </tr>
+              </tfoot>
+            </table>
+          </div>
+        </div>
+      </div>
+    </div>
+  </div>
+  {% endfor %}
+</div>
+
+<!-- Food Row Template (Hidden) -->
+<template id="food-row-template">
+  <tr class="new-food-row">
+    <td>
+      <div class="input-group">
+        <input
+          type="text"
+          class="form-control food-code"
+          placeholder="Código do alimento"
+          onkeyup="searchFood(this)"
+        />
+        <div
+          class="search-results d-none position-absolute w-100 bg-white border rounded-bottom shadow-sm"
+          style="z-index: 1000; top: 100%"
+        >
+          <!-- Search results will be populated here -->
+        </div>
+      </div>
+    </td>
+    <td>
+      <input
+        type="number"
+        class="form-control quantity"
+        placeholder="g"
+        step="0.1"
+        min="0"
+        oninput="updateNutrition(this)"
+      />
+    </td>
+    <td class="calories">0</td>
+    <td class="proteins">0</td>
+    <td class="carbs">0</td>
+    <td class="fats">0</td>
+    <td>
+      <button
+        class="btn btn-success btn-sm save-food"
+        onclick="saveFood(this)"
+        style="display: none"
+      >
+        <i class="fas fa-check"></i>
+      </button>
+      <button
+        class="btn btn-danger btn-sm"
+        onclick="this.closest('tr').remove()"
+      >
+        <i class="fas fa-times"></i>
+      </button>
+    </td>
+  </tr>
+</template>
+{% endblock %} {% block extra_css %}
+<style>
+  .nutrient-box {
+    background-color: #f8f9fa;
+    border: 1px solid #dee2e6;
+  }
+
+  .progress {
+    height: 1.5rem;
+  }
+
+  .progress-bar {
+    transition: width 0.6s ease;
+  }
+
+  .search-results {
+    max-height: 200px;
+    overflow-y: auto;
+  }
+
+  .search-results .result-item {
+    padding: 0.5rem;
+    cursor: pointer;
+  }
+
+  .search-results .result-item:hover {
+    background-color: #f8f9fa;
+  }
+
+  .table-responsive {
+    overflow: visible !important;
+  }
+
+  .new-food-row td {
+    position: relative;
+  }
+</style>
+{% endblock %}

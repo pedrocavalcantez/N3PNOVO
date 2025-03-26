@@ -1,0 +1,18 @@
+{% extends "base.html" %} {% block title %}Acesso Visitante{% endblock %} {%
+block content %}
+<div class="auth-container">
+  <h2 class="text-center mb-4">Bem-vindo Visitante!</h2>
+  <p class="text-center mb-4">
+    Você está acessando o sistema como visitante. Algumas funcionalidades podem
+    estar limitadas.
+  </p>
+  <div class="d-grid gap-2">
+    <a href="{{ url_for('auth.signup') }}" class="btn btn-primary"
+      >Criar uma Conta</a
+    >
+    <a href="{{ url_for('main.dashboard') }}" class="btn btn-secondary"
+      >Continuar como Visitante</a
+    >
+  </div>
+</div>
+{% endblock %}

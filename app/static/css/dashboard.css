@@ -1,0 +1,96 @@
+/* Dashboard Styles */
+.nutrition-summary {
+  background-color: #f8f9fa;
+  border-radius: 10px;
+  padding: 20px;
+  margin-bottom: 30px;
+}
+
+.progress {
+  height: 25px;
+  margin-bottom: 15px;
+}
+
+.progress-bar {
+  transition: width 0.6s ease;
+}
+
+.meal-section {
+  background-color: white;
+  border-radius: 10px;
+  padding: 20px;
+  margin-bottom: 20px;
+  box-shadow: 0 2px 4px rgba(0, 0, 0, 0.1);
+}
+
+.meal-section h3 {
+  color: #333;
+  margin-bottom: 20px;
+}
+
+.table {
+  margin-bottom: 0;
+}
+
+.table th {
+  border-top: none;
+  background-color: #f8f9fa;
+}
+
+.btn-add {
+  margin-bottom: 15px;
+}
+
+.search-results {
+  position: absolute;
+  z-index: 9999;
+  background: white;
+  border: 1px solid #ddd;
+  border-radius: 4px;
+  max-height: 200px;
+  overflow-y: auto;
+  width: 100%;
+  box-shadow: 0 2px 4px rgba(0, 0, 0, 0.1);
+}
+
+.search-results div {
+  padding: 8px 12px;
+  cursor: pointer;
+}
+
+.search-results div:hover {
+  background-color: #f8f9fa;
+}
+
+.food-row {
+  transition: all 0.3s ease;
+}
+
+.food-row:hover {
+  background-color: #f8f9fa;
+}
+
+.btn-save,
+.btn-remove {
+  transition: all 0.2s ease;
+}
+
+.btn-save:hover,
+.btn-remove:hover {
+  transform: scale(1.1);
+}
+
+/* Responsive adjustments */
+@media (max-width: 768px) {
+  .nutrition-summary {
+    padding: 15px;
+  }
+
+  .meal-section {
+    padding: 15px;
+  }
+
+  .table-responsive {
+    margin-bottom: 15px;
+  }
+}
