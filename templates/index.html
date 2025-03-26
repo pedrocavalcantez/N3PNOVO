@@ -1,0 +1,22 @@
+{% extends "base.html" %} {% block title %}Início{% endblock %} {% block content
+%}
+<div class="container">
+  <div class="row justify-content-center">
+    <div class="col-md-8 text-center">
+      <h1 class="display-4 mb-4">Bem-vindo ao Sistema de Cadastro</h1>
+      <p class="lead mb-4">Por favor, escolha como deseja prosseguir:</p>
+      <div class="d-grid gap-3 col-md-6 mx-auto">
+        <a href="{{ url_for('login') }}" class="btn btn-primary btn-lg"
+          >Login</a
+        >
+        <a href="{{ url_for('signup') }}" class="btn btn-secondary btn-lg"
+          >Cadastro</a
+        >
+        <a href="{{ url_for('guest') }}" class="btn btn-guest btn-lg"
+          >Entrar como Visitante</a
+        >
+      </div>
+    </div>
+  </div>
+</div>
+{% endblock %}
