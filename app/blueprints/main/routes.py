@@ -1,5 +1,14 @@
 from datetime import datetime
-from flask import render_template, redirect, url_for, flash, request, jsonify, abort
+from flask import (
+    render_template,
+    redirect,
+    url_for,
+    flash,
+    request,
+    jsonify,
+    abort,
+    send_file,
+)
 from flask_login import login_required, current_user
 from app import db
 from app.blueprints.main import bp
@@ -9,12 +18,13 @@ from app.constants import MEAL_TYPES
 import pandas as pd
 import os
 import json
+from io import BytesIO
 
 
 def load_food_data():
     try:
         excel_path = os.path.join("data", "food.xlsx")
-        return pd.read_excel(excel_path)
+        return pd.read_excel(excel_path).sort_values(by="identificador")
     except Exception as e:
         print(f"Error loading food data: {str(e)}")
         return pd.DataFrame()
@@ -34,42 +44,7 @@ def guest():
 
 @bp.route("/guest_dashboard")
 def guest_dashboard():
-    # For guests, we'll show empty totals since they don't have a history
-    empty_foods_by_meal = {
-        "cafe_da_manha": [],
-        "lanche_manha": [],
-        "almoco": [],
-        "lanche_tarde": [],
-        "janta": [],
-        "ceia": [],
-    }
-
-    # Calculate empty meal totals
-    empty_meal_totals = {
-        meal_type: type(
-            "MealTotals", (), {"calories": 0, "proteins": 0, "carbs": 0, "fats": 0}
-        )
-        for meal_type in MEAL_TYPES.keys()
-    }
-
-    return render_template(
-        "main/dashboard.html",
-        user=None,  # No user for guests
-        foods_by_meal=empty_foods_by_meal,
-        total_calories=0,
-        total_proteins=0,
-        total_carbs=0,
-        total_fats=0,
-        daily_totals=type(
-            "DailyTotals", (), {"calories": 0, "proteins": 0, "carbs": 0, "fats": 0}
-        ),
-        user_goals=type(
-            "UserGoals", (), {"calories": 0, "proteins": 0, "carbs": 0, "fats": 0}
-        ),
-        meal_types=MEAL_TYPES,
-        meals=empty_foods_by_meal,
-        meal_totals=empty_meal_totals,
-    )
+    return render_template("main/guest_dashboard.html")
 
 
 @bp.route("/dashboard")
@@ -99,41 +74,31 @@ def dashboard():
     total_carbs = sum(food.carbs for food in foods)
     total_fats = sum(food.fats for food in foods)
 
-    # Get daily totals from the model
-    daily_totals = Food.get_daily_totals(current_user.id, today)
-
-    # Calculate user's daily goals
-    user_goals = type(
-        "UserGoals",
-        (),
-        {
-            "calories": current_user.calculate_daily_calories(),
-            "proteins": current_user.calculate_daily_calories()
-            * 0.3
-            / 4,  # 30% of calories from protein
-            "carbs": current_user.calculate_daily_calories()
-            * 0.4
-            / 4,  # 40% of calories from carbs
-            "fats": current_user.calculate_daily_calories()
-            * 0.3
-            / 9,  # 30% of calories from fats
-        },
-    )
-
     # Calculate meal totals
     meal_totals = {}
-    for meal_type in MEAL_TYPES.keys():
-        meal_foods = foods_by_meal[meal_type]
+    for meal_type, foods_list in foods_by_meal.items():
         meal_totals[meal_type] = type(
             "MealTotals",
             (),
             {
-                "calories": sum(food.calories for food in meal_foods),
-                "proteins": sum(food.proteins for food in meal_foods),
-                "carbs": sum(food.carbs for food in meal_foods),
-                "fats": sum(food.fats for food in meal_foods),
+                "calories": sum(food.calories for food in foods_list),
+                "proteins": sum(food.proteins for food in foods_list),
+                "carbs": sum(food.carbs for food in foods_list),
+                "fats": sum(food.fats for food in foods_list),
             },
         )
+
+    # Get user goals
+    user_goals = type(
+        "UserGoals",
+        (),
+        {
+            "calories": current_user.calories_goal or 0,
+            "proteins": current_user.proteins_goal or 0,
+            "carbs": current_user.carbs_goal or 0,
+            "fats": current_user.fats_goal or 0,
+        },
+    )
 
     return render_template(
         "main/dashboard.html",
@@ -143,7 +108,16 @@ def dashboard():
         total_proteins=total_proteins,
         total_carbs=total_carbs,
         total_fats=total_fats,
-        daily_totals=daily_totals,
+        daily_totals=type(
+            "DailyTotals",
+            (),
+            {
+                "calories": total_calories,
+                "proteins": total_proteins,
+                "carbs": total_carbs,
+                "fats": total_fats,
+            },
+        ),
         user_goals=user_goals,
         meal_types=MEAL_TYPES,
         meals=foods_by_meal,
@@ -151,9 +125,9 @@ def dashboard():
     )
 
 
-@bp.route("/search_food")
+@bp.route("/api/search_food")
 def search_food():
-    query = request.args.get("q", "").lower()
+    query = request.args.get("query", "").strip()
     if not query:
         return jsonify([])
 
@@ -161,119 +135,197 @@ def search_food():
     if df.empty:
         return jsonify([])
 
-    # Convert identificador to string and search for matches
-    df["identificador"] = df["identificador"].astype(str)
-    matches = df[df["identificador"].str.lower().str.contains(query, na=False)]
+    # Search in both code and name columns
+    # First find exact matches at start
+    starts_with_mask = (
+        df["identificador"]
+        .astype(str)
+        .str.lower()
+        .str.startswith(query.lower(), na=False)
+    )
+    # Then find partial matches
+    contains_mask = (
+        df["identificador"].astype(str).str.contains(query, case=False, na=False)
+    )
+    # Combine masks with OR, but prioritize exact matches by putting them first
+    mask = starts_with_mask | contains_mask
+    results = pd.concat([df[starts_with_mask].head(5), df[contains_mask].head(5)]).head(
+        5
+    )
 
-    # Get top 5 matches
-    results = matches.head(5).to_dict("records")
+    return jsonify(
+        [
+            {
+                "code": str(row["identificador"]),
+                "qtd": str(row["Quantidade"]),
+                "name": row["identificador"],
+                "calories": float(row["Calorias"]),
+                "proteins": float(row["Proteínas"]),
+                "carbs": float(row["Carboidratos"]),
+                "fats": float(row["Gorduras"]),
+            }
+            for _, row in results.iterrows()
+        ]
+    )
 
-    # Format results for dropdown
-    formatted_results = [
+
+@bp.route("/api/food_nutrition/<code>")
+def get_food_nutrition(code):
+    quantity = float(request.args.get("quantity", 100))
+    df = load_food_data()
+
+    if df.empty:
+        return jsonify({"error": "Food database not available"}), 500
+
+    food = df[df["identificador"].astype(str) == str(code)]
+    if food.empty:
+        return jsonify({"error": "Food not found"}), 404
+
+    row = food.iloc[0]
+    multiplier = quantity / 100  # Use the requested quantity for the multiplier
+
+    return jsonify(
         {
-            "name": str(row["identificador"]),
-            "Quantidade": float(row["Quantidade"]),
-            "Calorias": float(row["Calorias"]),
-            "Proteínas": float(row["Proteínas"]),
-            "Carboidratos": float(row["Carboidratos"]),
-            "Gorduras": float(row["Gorduras"]),
+            "calories": float(row["Calorias"]) * multiplier,
+            "proteins": float(row["Proteínas"]) * multiplier,
+            "carbs": float(row["Carboidratos"]) * multiplier,
+            "fats": float(row["Gorduras"]) * multiplier,
         }
-        for row in results
-    ]
-
-    return jsonify(formatted_results)
+    )
 
 
-@bp.route("/add_food", methods=["POST"])
+@bp.route("/api/add_food", methods=["POST"])
 def add_food():
-    if request.method == "POST":
-        # Check if we're receiving multiple foods
-        foods_json = request.form.get("foods")
-        if foods_json:
-            foods_data = json.loads(foods_json)
-            meal_type = request.form.get("meal_type")  # Get meal type from form
+    try:
+        data = request.get_json()
+        if not data:
+            return jsonify({"error": "No data provided"}), 400
 
-            # If user is logged in, save to database
-            if current_user.is_authenticated:
-                for food_item in foods_data:
-                    food = Food(
-                        name=str(food_item["code"]),
-                        quantity=food_item["quantity"],
-                        calories=food_item["calories"],
-                        proteins=food_item["proteins"],
-                        carbs=food_item["carbs"],
-                        fats=food_item["fats"],
-                        user_id=current_user.id,
-                        meal_type=meal_type,  # Add meal type to food entry
-                    )
-                    db.session.add(food)
+        code = data.get("code")
+        quantity = float(data.get("quantity", 32))
+        meal_type = data.get("meal_type")
 
-                try:
-                    db.session.commit()
-                    flash("Alimentos adicionados com sucesso!", "success")
-                except Exception as e:
-                    db.session.rollback()
-                    flash("Erro ao adicionar alimentos. Tente novamente.", "error")
-            else:
-                # For guests, just return success without saving
-                flash("Alimentos calculados com sucesso!", "success")
+        if not all([code, quantity, meal_type]):
+            return jsonify({"error": "Missing required fields"}), 400
 
-            return jsonify({"status": "success"})
+        if meal_type not in MEAL_TYPES:
+            return jsonify({"error": "Invalid meal type"}), 400
 
-        # Handle single food submission
-        food_id = request.form.get("food_id")
-        quantity_consumed = float(request.form.get("quantity", 0))
-        meal_type = request.form.get("meal_type")  # Get meal type from form
-
+        # Get food nutrition data
         df = load_food_data()
         if df.empty:
-            flash("Erro ao carregar dados dos alimentos.", "error")
-            return redirect(url_for("main.dashboard"))
+            return jsonify({"error": "Food database not available"}), 500
 
-        # Convert food_id to string for comparison
-        food_id = str(food_id)
-        df["identificador"] = df["identificador"].astype(str)
-        food_data = df[df["identificador"] == food_id].iloc[0]
-        base_quantity = food_data["Quantidade"]
+        food = df[df["identificador"].astype(str) == str(code)]
+        if food.empty:
+            return jsonify({"error": "Food not found"}), 404
 
-        # Calculate the proportion
-        proportion = quantity_consumed / base_quantity
+        row = food.iloc[0]
+        multiplier = quantity / 100
 
-        food = Food(
-            name=str(food_data["identificador"]),
-            quantity=quantity_consumed,
-            calories=food_data["Calorias"] * proportion,
-            proteins=food_data["Proteínas"] * proportion,
-            carbs=food_data["Carboidratos"] * proportion,
-            fats=food_data["Gorduras"] * proportion,
-            user_id=current_user.id,
-            meal_type=meal_type,  # Add meal type to food entry
-        )
+        new_food = None
+        if current_user.is_authenticated:
+            # Create new food entry for authenticated users
+            new_food = Food(
+                user_id=current_user.id,
+                code=code,
+                name=row["identificador"],
+                quantity=quantity,
+                calories=float(row["Calorias"]) * multiplier,
+                proteins=float(row["Proteínas"]) * multiplier,
+                carbs=float(row["Carboidratos"]) * multiplier,
+                fats=float(row["Gorduras"]) * multiplier,
+                meal_type=meal_type,
+                date=datetime.utcnow(),
+            )
 
-        try:
-            db.session.add(food)
+            db.session.add(new_food)
             db.session.commit()
-            flash("Alimento adicionado com sucesso!", "success")
-        except Exception as e:
-            db.session.rollback()
-            flash("Erro ao adicionar alimento. Tente novamente.", "error")
 
-    return redirect(url_for("main.dashboard"))
+        # For both authenticated and guest users, return success
+        return jsonify(
+            {
+                "success": True,
+                "message": "Food added successfully",
+                "food": {
+                    "id": getattr(new_food, "id", None),  # None for guests
+                    "name": row["identificador"],
+                    "quantity": quantity,
+                    "calories": float(row["Calorias"]) * multiplier,
+                    "proteins": float(row["Proteínas"]) * multiplier,
+                    "carbs": float(row["Carboidratos"]) * multiplier,
+                    "fats": float(row["Gorduras"]) * multiplier,
+                },
+            }
+        )
+    except Exception as e:
+        # Log the error for debugging
+        print(f"Error in add_food: {str(e)}")
+        # Always return JSON, even for errors
+        return jsonify({"error": "Internal server error", "details": str(e)}), 500
 
 
-@bp.route("/delete_food/<int:food_id>", methods=["POST"])
-@login_required
+@bp.route("/api/delete_food/<int:food_id>", methods=["DELETE"])
 def delete_food(food_id):
-    food = Food.query.get_or_404(food_id)
-
-    # Verificar se o alimento pertence ao usuário atual
-    if food.user_id != current_user.id:
-        abort(403)  # Forbidden
-
-    try:
+    if current_user.is_authenticated:
+        food = Food.query.get_or_404(food_id)
+        if food.user_id != current_user.id:
+            return jsonify({"error": "Unauthorized"}), 403
         db.session.delete(food)
         db.session.commit()
-        return jsonify({"status": "success"})
+
+    # For both authenticated and guest users, return success
+    return jsonify({"success": True, "message": "Food deleted successfully"})
+
+
+@bp.route("/export_food_data")
+@login_required
+def export_food_data():
+    try:
+        # Get all food entries for the current user
+        foods = Food.query.filter_by(user_id=current_user.id).all()
+
+        # Convert to DataFrame
+        data = []
+        for food in foods:
+            data.append(
+                {
+                    "Data": food.date.strftime("%Y-%m-%d"),
+                    "Refeição": MEAL_TYPES.get(food.meal_type, food.meal_type),
+                    "Alimento": food.name,
+                    "Quantidade (g)": food.quantity,
+                    "Calorias": food.calories,
+                    "Proteínas": food.proteins,
+                    "Carboidratos": food.carbs,
+                    "Gorduras": food.fats,
+                }
+            )
+
+        df = pd.DataFrame(data)
+
+        # Create Excel file in memory
+        output = BytesIO()
+        with pd.ExcelWriter(output, engine="openpyxl") as writer:
+            df.to_excel(writer, sheet_name="Registro Alimentar", index=False)
+
+            # Auto-adjust column widths
+            worksheet = writer.sheets["Registro Alimentar"]
+            for idx, col in enumerate(df.columns):
+                max_length = max(df[col].astype(str).apply(len).max(), len(str(col)))
+                worksheet.column_dimensions[chr(65 + idx)].width = max_length + 2
+
+        output.seek(0)
+
+        # Generate filename with current date
+        filename = f"registro_alimentar_{datetime.now().strftime('%Y%m%d')}.xlsx"
+
+        return send_file(
+            output,
+            mimetype="application/vnd.openxmlformats-officedocument.spreadsheetml.sheet",
+            as_attachment=True,
+            download_name=filename,
+        )
+
     except Exception as e:
-        db.session.rollback()
-        return jsonify({"status": "error", "message": str(e)}), 500
+        flash(f"Erro ao exportar dados: {str(e)}", "error")
+        return redirect(url_for("main.dashboard"))

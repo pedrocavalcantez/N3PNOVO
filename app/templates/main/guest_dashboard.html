@@ -1,72 +1,43 @@
 {% extends "base.html" %} {% from "macros/forms.html" import render_food_row %}
-{% block title %}Dashboard - N3P{% endblock %} {% block content %}
+{% block title %}Guest Dashboard - N3P{% endblock %} {% block content %}
 <div class="container">
   <!-- Nutritional Summary -->
   <div class="row mb-4">
     <div class="col-md-12">
       <div class="card">
-        <div
-          class="card-header d-flex justify-content-between align-items-center"
-        >
+        <div class="card-header">
           <h4 class="mb-0">Resumo Nutricional do Dia</h4>
-          <a
-            href="{{ url_for('main.export_food_data') }}"
-            class="btn btn-success"
-          >
-            <i class="fas fa-file-excel me-1"></i>Exportar Dados
-          </a>
         </div>
         <div class="card-body">
           <div class="row">
-            <div class="col-md-6">
-              <div class="progress-wrapper mb-3">
-                <div
-                  class="d-flex justify-content-between align-items-center mb-1"
-                >
-                  <span>Calorias</span>
-                  <span
-                    >{{ "%.1f"|format(daily_totals.calories) }} / {{
-                    "%.1f"|format(user_goals.calories) }} kcal</span
-                  >
-                </div>
-                <div class="progress">
-                  <div
-                    class="progress-bar bg-primary"
-                    role="progressbar"
-                    style="width: {% if user_goals.calories > 0 %}{{ [100, (daily_totals.calories / user_goals.calories * 100)|round]|min }}{% else %}0{% endif %}%"
-                  ></div>
-                </div>
-              </div>
-            </div>
-            <div class="col-md-6">
+            <div class="col-md-12">
               <div class="row">
-                <div class="col-md-4">
+                <div class="col-md-3">
+                  <div class="nutrient-box text-center p-2 rounded mb-2">
+                    <h6>Calorias</h6>
+                    <p class="mb-0" id="total-calories">0.0</p>
+                    <small class="text-muted">kcal</small>
+                  </div>
+                </div>
+                <div class="col-md-3">
                   <div class="nutrient-box text-center p-2 rounded mb-2">
                     <h6>Proteínas</h6>
-                    <p class="mb-0">
-                      {{ "%.1f"|format(daily_totals.proteins) }}g
-                    </p>
-                    <small class="text-muted"
-                      >Meta: {{ "%.1f"|format(user_goals.proteins) }}g</small
-                    >
+                    <p class="mb-0" id="total-proteins">0.0</p>
+                    <small class="text-muted">g</small>
                   </div>
                 </div>
-                <div class="col-md-4">
+                <div class="col-md-3">
                   <div class="nutrient-box text-center p-2 rounded mb-2">
                     <h6>Carboidratos</h6>
-                    <p class="mb-0">{{ "%.1f"|format(daily_totals.carbs) }}g</p>
-                    <small class="text-muted"
-                      >Meta: {{ "%.1f"|format(user_goals.carbs) }}g</small
-                    >
+                    <p class="mb-0" id="total-carbs">0.0</p>
+                    <small class="text-muted">g</small>
                   </div>
                 </div>
-                <div class="col-md-4">
+                <div class="col-md-3">
                   <div class="nutrient-box text-center p-2 rounded mb-2">
                     <h6>Gorduras</h6>
-                    <p class="mb-0">{{ "%.1f"|format(daily_totals.fats) }}g</p>
-                    <small class="text-muted"
-                      >Meta: {{ "%.1f"|format(user_goals.fats) }}g</small
-                    >
+                    <p class="mb-0" id="total-fats">0.0</p>
+                    <small class="text-muted">g</small>
                   </div>
                 </div>
               </div>
@@ -78,7 +49,10 @@
   </div>
 
   <!-- Meal Sections -->
-  {% for meal_type, meal_name in meal_types.items() %}
+  {% set meal_types = { 'cafe_da_manha': 'Café da Manhã', 'lanche_manha':'Lanche
+  da Manhã', 'almoco': 'Almoço', 'lanche_tarde': 'Lanche da Tarde', 'janta':
+  'Jantar', 'ceia': 'Ceia' } %} {% for meal_type, meal_name in
+  meal_types.items() %}
   <div class="row mb-4">
     <div class="col-md-12">
       <div class="card">
@@ -107,37 +81,15 @@
                   <th style="width: 80px"></th>
                 </tr>
               </thead>
-              <tbody id="{{ meal_type }}-foods">
-                {% for food in meals[meal_type] %} {{ render_food_row(food) }}
-                {% endfor %}
-              </tbody>
+              <tbody id="{{ meal_type }}-foods"></tbody>
               <tfoot>
                 <tr class="table-secondary">
                   <td><strong>Total</strong></td>
                   <td>-</td>
-                  <td>
-                    <strong
-                      >{{ "%.1f"|format(meal_totals[meal_type].calories)
-                      }}</strong
-                    >
-                  </td>
-                  <td>
-                    <strong
-                      >{{ "%.1f"|format(meal_totals[meal_type].proteins)
-                      }}g</strong
-                    >
-                  </td>
-                  <td>
-                    <strong
-                      >{{ "%.1f"|format(meal_totals[meal_type].carbs)
-                      }}g</strong
-                    >
-                  </td>
-                  <td>
-                    <strong
-                      >{{ "%.1f"|format(meal_totals[meal_type].fats) }}g</strong
-                    >
-                  </td>
+                  <td class="meal-calories"><strong>0.0</strong></td>
+                  <td class="meal-proteins"><strong>0.0g</strong></td>
+                  <td class="meal-carbs"><strong>0.0g</strong></td>
+                  <td class="meal-fats"><strong>0.0g</strong></td>
                   <td></td>
                 </tr>
               </tfoot>
@@ -173,29 +125,30 @@
       <input
         type="number"
         class="form-control quantity"
-        placeholder=""
-        step="1"
+        placeholder="g"
+        step="0.1"
         min="0"
         oninput="updateNutrition(this)"
         style="width: 80px"
       />
     </td>
-    <td class="calories">0</td>
-    <td class="proteins">0</td>
-    <td class="carbs">0</td>
-    <td class="fats">0</td>
+    <td class="calories">0.0</td>
+    <td class="proteins">0.0</td>
+    <td class="carbs">0.0</td>
+    <td class="fats">0.0</td>
     <td>
       <div class="action-buttons">
         <button
           class="btn btn-success save-food"
           style="display: none"
+          onclick="saveGuestFood(this)"
           title="Salvar"
         >
           <i class="fas fa-check"></i>
         </button>
         <button
           class="btn btn-danger"
-          onclick="this.closest('tr').remove()"
+          onclick="removeGuestFood(this)"
           title="Remover"
         >
           <i class="fas fa-times"></i>

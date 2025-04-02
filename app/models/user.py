@@ -20,11 +20,47 @@ class User(UserMixin, db.Model):
     fator_atividade = db.Column(db.String(20), nullable=False)
     objetivo = db.Column(db.String(50), nullable=False)
 
+    # Nutrition goals
+    calories_goal = db.Column(db.Float, nullable=True)
+    proteins_goal = db.Column(db.Float, nullable=True)
+    carbs_goal = db.Column(db.Float, nullable=True)
+    fats_goal = db.Column(db.Float, nullable=True)
+
     # Relationships
     foods = db.relationship("Food", backref="user", lazy=True)
 
+    def get_objetivo_display(self):
+        """Get the display name for the user's objective"""
+        objetivo_names = {
+            "perder_peso": "Perder Peso",
+            "manter_peso": "Manter Peso",
+            "ganhar_peso": "Ganhar Peso",
+            "ganhar_massa": "Ganhar Massa",
+        }
+        return objetivo_names.get(self.objetivo, self.objetivo)
+
+    def get_fator_atividade_display(self):
+        """Get the display name for the user's activity factor"""
+        activity_names = {
+            "sedentario": "Sedentário",
+            "leve": "Levemente Ativo",
+            "moderado": "Moderadamente Ativo",
+            "muito_ativo": "Muito Ativo",
+            "extremamente_ativo": "Extremamente Ativo",
+        }
+        return activity_names.get(self.fator_atividade, self.fator_atividade)
+
+    def get_sexo_display(self):
+        """Get the display name for the user's gender"""
+        return GENDER_CHOICES.get(self.sexo, self.sexo)
+
     def __init__(self, **kwargs):
         super(User, self).__init__(**kwargs)
+        # Set default goals based on calculated values
+        if not self.calories_goal and all(
+            [self.peso, self.altura, self.idade, self.sexo]
+        ):
+            self.update_goals()
 
     def set_password(self, password):
         """Set the user's password"""
@@ -60,6 +96,21 @@ class User(UserMixin, db.Model):
         objective_multiplier = self.get_objective_multiplier()
 
         return round(bmr * activity_multiplier * objective_multiplier)
+
+    def update_goals(self):
+        """Update nutrition goals based on calculated values"""
+        # Calculate daily calories
+        self.calories_goal = self.calculate_daily_calories()
+
+        # Calculate macronutrient goals based on calories
+        # Proteins: 30% of calories (4 calories per gram)
+        self.proteins_goal = round((self.calories_goal * 0.30) / 4)
+
+        # Carbs: 40% of calories (4 calories per gram)
+        self.carbs_goal = round((self.calories_goal * 0.40) / 4)
+
+        # Fats: 30% of calories (9 calories per gram)
+        self.fats_goal = round((self.calories_goal * 0.30) / 9)
 
     def __repr__(self):
         return f"<User {self.username}>"

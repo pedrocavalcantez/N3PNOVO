@@ -75,6 +75,15 @@ def logout():
 def profile():
     form = EditProfileForm(obj=current_user)
     if form.validate_on_submit():
+        # Store old values to check if relevant fields changed
+        old_peso = current_user.peso
+        old_altura = current_user.altura
+        old_idade = current_user.idade
+        old_sexo = current_user.sexo
+        old_fator_atividade = current_user.fator_atividade
+        old_objetivo = current_user.objetivo
+
+        # Update user information
         current_user.nome = form.nome.data
         current_user.idade = form.idade.data
         current_user.altura = form.altura.data
@@ -82,6 +91,18 @@ def profile():
         current_user.sexo = form.sexo.data
         current_user.fator_atividade = form.fator_atividade.data
         current_user.objetivo = form.objetivo.data
+
+        # Check if any relevant fields changed
+        if (
+            old_peso != current_user.peso
+            or old_altura != current_user.altura
+            or old_idade != current_user.idade
+            or old_sexo != current_user.sexo
+            or old_fator_atividade != current_user.fator_atividade
+            or old_objetivo != current_user.objetivo
+        ):
+            # Update nutritional goals if relevant fields changed
+            current_user.update_goals()
 
         try:
             db.session.commit()
@@ -91,4 +112,22 @@ def profile():
             db.session.rollback()
             flash("Erro ao atualizar perfil. Por favor, tente novamente.", "danger")
 
-    return render_template("auth/profile.html", title="Editar Perfil", form=form)
+    # Create user_goals object
+    user_goals = type(
+        "UserGoals",
+        (),
+        {
+            "calories": current_user.calories_goal or 0,
+            "proteins": current_user.proteins_goal or 0,
+            "carbs": current_user.carbs_goal or 0,
+            "fats": current_user.fats_goal or 0,
+        },
+    )
+
+    return render_template(
+        "auth/profile.html",
+        title="Editar Perfil",
+        form=form,
+        user_goals=user_goals,
+        user=current_user,
+    )

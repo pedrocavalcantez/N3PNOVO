@@ -8,6 +8,7 @@ class Food(db.Model):
     """Food model for storing food entries"""
 
     id = db.Column(db.Integer, primary_key=True)
+    code = db.Column(db.String(20), nullable=False)  # Food code from Excel file
     name = db.Column(db.String(100), nullable=False)
     quantity = db.Column(db.Float, nullable=False, default=DEFAULT_PORTION_SIZE)
     calories = db.Column(db.Float, nullable=False)
@@ -39,6 +40,7 @@ class Food(db.Model):
         """Convert food entry to dictionary"""
         return {
             "id": self.id,
+            "code": self.code,
             "name": self.name,
             "quantity": self.quantity,
             "calories": round(self.calories),

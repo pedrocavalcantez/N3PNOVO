@@ -39,9 +39,15 @@ input_class='form-control', placeholder='') %}
   <td>{{ "%.1f"|format(food.carbs) }}g</td>
   <td>{{ "%.1f"|format(food.fats) }}g</td>
   <td>
-    <button class="btn btn-sm btn-danger" onclick="deleteFood({{ food.id }})">
-      <i class="fas fa-trash"></i>
-    </button>
+    <div class="action-buttons">
+      <button
+        class="btn btn-danger"
+        onclick="deleteFood({{ food.id }})"
+        title="Excluir"
+      >
+        <i class="fas fa-trash"></i>
+      </button>
+    </div>
   </td>
 </tr>
 {% endmacro %}
