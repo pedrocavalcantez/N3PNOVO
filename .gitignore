@@ -1,8 +1,3 @@
-# Virtual Environment
-venv/
-env/
-ENV/
-
 # Python
 __pycache__/
 *.py[cod]
@@ -25,29 +20,32 @@ wheels/
 .installed.cfg
 *.egg
 
+# Flask
+instance/
+.webassets-cache
+
+# Virtual Environment
+venv/
+env/
+ENV/
+
 # IDE
-.idea/
 .vscode/
+.idea/
 *.swp
 *.swo
-
-# Environment variables
-.env
-.env.*
 
 # Database
 *.db
 *.sqlite3
 
+# Environment variables
+.env
+.env.*
+
 # Logs
 *.log
 
-# Instance folder
-instance/
-
-# Coverage reports
-htmlcov/
-.coverage
-.coverage.*
-coverage.xml
-*.cover 
+# System Files
+.DS_Store
+Thumbs.db 
