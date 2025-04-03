@@ -2,14 +2,19 @@ from flask_login import UserMixin
 from werkzeug.security import generate_password_hash, check_password_hash
 from app import db
 from app.constants import ACTIVITY_FACTORS, OBJECTIVES, GENDER_CHOICES
+from datetime import datetime
 
 
 class User(UserMixin, db.Model):
     """User model for storing user account information"""
 
+    __tablename__ = "users"
+
     id = db.Column(db.Integer, primary_key=True)
     username = db.Column(db.String(80), unique=True, nullable=False)
-    password_hash = db.Column(db.String(120), nullable=False)
+    email = db.Column(db.String(120), unique=True, nullable=False)
+    password_hash = db.Column(db.String(128))
+    created_at = db.Column(db.DateTime, default=datetime.utcnow)
     nome = db.Column(db.String(100), nullable=False)
     idade = db.Column(db.Integer, nullable=False)
     altura = db.Column(db.Float, nullable=False)  # altura em metros
@@ -27,7 +32,7 @@ class User(UserMixin, db.Model):
     fats_goal = db.Column(db.Float, nullable=True)
 
     # Relationships
-    foods = db.relationship("Food", backref="user", lazy=True)
+    diets = db.relationship("Diet", lazy=True)
 
     def get_objetivo_display(self):
         """Get the display name for the user's objective"""

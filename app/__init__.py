@@ -34,6 +34,10 @@ def create_app(config_class=Config):
 
     app.register_blueprint(errors_bp)
 
+    from app.blueprints.api import bp as api_bp
+
+    app.register_blueprint(api_bp, url_prefix="/api")
+
     # Load user model for Flask-Login
     from app.models import User
 

@@ -32,18 +32,25 @@ input_class='form-control', placeholder='') %}
 </div>
 {% endmacro %} {% macro render_food_row(food) %}
 <tr id="food-{{ food.id }}">
-  <td>{{ food.name }}</td>
-  <td>{{ "%.1f"|format(food.quantity) }}g</td>
-  <td>{{ "%.1f"|format(food.calories) }}</td>
-  <td>{{ "%.1f"|format(food.proteins) }}g</td>
-  <td>{{ "%.1f"|format(food.carbs) }}g</td>
-  <td>{{ "%.1f"|format(food.fats) }}g</td>
+  <td>{{ food.food_code }}</td>
+  <td>{{ "%.1f"|format(food.quantity|float) }}g</td>
+  <td>{{ "%.1f"|format(food.calories|float) }}</td>
+  <td>{{ "%.1f"|format(food.proteins|float) }}g</td>
+  <td>{{ "%.1f"|format(food.carbs|float) }}g</td>
+  <td>{{ "%.1f"|format(food.fats|float) }}g</td>
   <td>
     <div class="action-buttons">
       <button
+        class="btn btn-primary btn-sm"
+        onclick="editFoodRow(this)"
+        title="Editar"
+      >
+        <i class="fas fa-edit"></i>
+      </button>
+      <button
         class="btn btn-danger"
         onclick="deleteFood({{ food.id }})"
-        title="Excluir"
+        title="Remover"
       >
         <i class="fas fa-trash"></i>
       </button>

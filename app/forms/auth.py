@@ -36,6 +36,7 @@ class SignupForm(FlaskForm):
     username = StringField(
         "Username", validators=[DataRequired(), Length(min=4, max=80)]
     )
+    email = StringField("Email", validators=[DataRequired(), Length(max=120)])
     password = PasswordField("Password", validators=[DataRequired(), Length(min=6)])
     nome = StringField("Nome", validators=[DataRequired(), Length(max=100)])
     idade = IntegerField(
@@ -63,6 +64,11 @@ class SignupForm(FlaskForm):
         """Check if username is already taken"""
         if User.query.filter_by(username=field.data).first():
             raise ValidationError("Este nome de usuário já está em uso.")
+
+    def validate_email(self, field):
+        """Check if email is already taken"""
+        if User.query.filter_by(email=field.data).first():
+            raise ValidationError("Este email já está em uso.")
 
 
 class EditProfileForm(FlaskForm):

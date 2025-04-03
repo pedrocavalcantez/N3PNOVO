@@ -42,6 +42,7 @@ def signup():
         try:
             user = User(
                 username=form.username.data,
+                email=form.email.data,
                 nome=form.nome.data,
                 idade=form.idade.data,
                 altura=form.altura.data,

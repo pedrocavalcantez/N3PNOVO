@@ -9,12 +9,22 @@
           class="card-header d-flex justify-content-between align-items-center"
         >
           <h4 class="mb-0">Resumo Nutricional do Dia</h4>
-          <a
-            href="{{ url_for('main.export_food_data') }}"
-            class="btn btn-success"
-          >
-            <i class="fas fa-file-excel me-1"></i>Exportar Dados
-          </a>
+          <div>
+            <button
+              class="btn btn-primary me-2"
+              data-bs-toggle="modal"
+              data-bs-target="#saveDietModal"
+            >
+              <i class="fas fa-save me-1"></i>Salvar Dieta
+            </button>
+            <button
+              class="btn btn-info me-2"
+              data-bs-toggle="modal"
+              data-bs-target="#loadDietModal"
+            >
+              <i class="fas fa-folder-open me-1"></i>Carregar Dieta
+            </button>
+          </div>
         </div>
         <div class="card-body">
           <div class="row">
@@ -204,9 +214,108 @@
     </td>
   </tr>
 </template>
+
+<!-- Save Diet Modal -->
+<div class="modal fade" id="saveDietModal" tabindex="-1">
+  <div class="modal-dialog">
+    <div class="modal-content">
+      <div class="modal-header">
+        <h5 class="modal-title">Salvar Dieta</h5>
+        <button
+          type="button"
+          class="btn-close"
+          data-bs-dismiss="modal"
+        ></button>
+      </div>
+      <div class="modal-body">
+        <form id="saveDietForm">
+          <div class="mb-3">
+            <label for="dietName" class="form-label">Nome da Dieta</label>
+            <div class="position-relative">
+              <input
+                type="text"
+                class="form-control"
+                id="dietName"
+                required
+                placeholder="Digite o nome da dieta"
+                autocomplete="off"
+              />
+              <div id="dietSuggestions" class="diet-suggestions d-none">
+                <!-- Suggestions will be populated here -->
+              </div>
+            </div>
+          </div>
+        </form>
+      </div>
+      <div class="modal-footer">
+        <button type="button" class="btn btn-secondary" data-bs-dismiss="modal">
+          Cancelar
+        </button>
+        <button type="button" class="btn btn-primary" onclick="saveDiet()">
+          Salvar
+        </button>
+      </div>
+    </div>
+  </div>
+</div>
+
+<!-- Load Diet Modal -->
+<div
+  class="modal fade"
+  id="loadDietModal"
+  tabindex="-1"
+  aria-labelledby="loadDietModalLabel"
+  aria-hidden="true"
+>
+  <div class="modal-dialog">
+    <div class="modal-content">
+      <div class="modal-header">
+        <h5 class="modal-title" id="loadDietModalLabel">Carregar Dieta</h5>
+        <button
+          type="button"
+          class="btn-close"
+          data-bs-dismiss="modal"
+          aria-label="Close"
+        ></button>
+      </div>
+      <div class="modal-body">
+        <div class="list-group">
+          {% for diet in saved_diets %}
+          <div
+            class="list-group-item d-flex justify-content-between align-items-center"
+          >
+            <button
+              type="button"
+              class="btn btn-link text-decoration-none flex-grow-1 text-start"
+              onclick="loadDiet({{ diet.id }})"
+            >
+              {{ diet.name }}
+            </button>
+            <button
+              type="button"
+              class="btn btn-danger btn-sm"
+              onclick="deleteDiet({{ diet.id }})"
+              title="Remover dieta"
+            >
+              <i class="fas fa-trash"></i>
+            </button>
+          </div>
+          {% endfor %}
+        </div>
+      </div>
+      <div class="modal-footer">
+        <button type="button" class="btn btn-secondary" data-bs-dismiss="modal">
+          Fechar
+        </button>
+      </div>
+    </div>
+  </div>
+</div>
 {% endblock %} {% block extra_css %}
 <link
   rel="stylesheet"
   href="{{ url_for('static', filename='css/dashboard.css') }}"
 />
+{% endblock %} {% block extra_js %}
+<script src="{{ url_for('static', filename='js/dashboard.js') }}"></script>
 {% endblock %}
