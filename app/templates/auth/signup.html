@@ -1,86 +1,51 @@
-{% extends "base.html" %} {% block title %}Cadastro{% endblock %} {% block
+{% extends "base.html" %} {% block title %}Cadastro - N3P{% endblock %} {% block
 content %}
-<div class="auth-container">
-  <h2 class="text-center mb-4">Cadastro de Usuário</h2>
-  <form method="POST">
-    {{ form.csrf_token }}
-    <div class="mb-3">
-      {{ form.username.label(class="form-label") }} {{
-      form.username(class="form-control") }} {% if form.username.errors %} {%
-      for error in form.username.errors %}
-      <div class="text-danger">{{ error }}</div>
-      {% endfor %} {% endif %}
+<div class="container py-5">
+  <div class="row justify-content-center">
+    <div class="col-md-6 col-lg-5">
+      <div class="auth-card">
+        <div class="auth-header">
+          <h4><i class="fas fa-user-plus me-2"></i>Cadastro</h4>
+        </div>
+        <div class="auth-body">
+          <form
+            method="POST"
+            action="{{ url_for('auth.signup') }}"
+            class="auth-form"
+          >
+            {{ form.hidden_tag() }}
+            <div class="mb-3">
+              {{ form.username.label(class="form-label") }} {{
+              form.username(class="form-control") }}
+            </div>
+            <div class="mb-3">
+              {{ form.email.label(class="form-label") }} {{
+              form.email(class="form-control") }}
+            </div>
+            <div class="mb-3">
+              {{ form.password.label(class="form-label") }} {{
+              form.password(class="form-control") }}
+            </div>
+            <div class="mb-4">
+              {{ form.confirm_password.label(class="form-label") }} {{
+              form.confirm_password(class="form-control") }}
+            </div>
+            <button type="submit" class="btn btn-auth">Cadastrar</button>
+          </form>
+          <div class="auth-links">
+            <p class="mb-0">
+              Já tem uma conta?
+              <a href="{{ url_for('auth.login') }}">Faça login</a>
+            </p>
+          </div>
+        </div>
+      </div>
     </div>
-    <div class="mb-3">
-      {{ form.email.label(class="form-label") }} {{
-      form.email(class="form-control") }} {% if form.email.errors %} {% for
-      error in form.email.errors %}
-      <div class="text-danger">{{ error }}</div>
-      {% endfor %} {% endif %}
-    </div>
-    <div class="mb-3">
-      {{ form.password.label(class="form-label") }} {{
-      form.password(class="form-control") }} {% if form.password.errors %} {%
-      for error in form.password.errors %}
-      <div class="text-danger">{{ error }}</div>
-      {% endfor %} {% endif %}
-    </div>
-    <div class="mb-3">
-      {{ form.nome.label(class="form-label") }} {{
-      form.nome(class="form-control") }} {% if form.nome.errors %} {% for error
-      in form.nome.errors %}
-      <div class="text-danger">{{ error }}</div>
-      {% endfor %} {% endif %}
-    </div>
-    <div class="mb-3">
-      {{ form.idade.label(class="form-label") }} {{
-      form.idade(class="form-control") }} {% if form.idade.errors %} {% for
-      error in form.idade.errors %}
-      <div class="text-danger">{{ error }}</div>
-      {% endfor %} {% endif %}
-    </div>
-    <div class="mb-3">
-      {{ form.altura.label(class="form-label") }} {{
-      form.altura(class="form-control") }} {% if form.altura.errors %} {% for
-      error in form.altura.errors %}
-      <div class="text-danger">{{ error }}</div>
-      {% endfor %} {% endif %}
-    </div>
-    <div class="mb-3">
-      {{ form.peso.label(class="form-label") }} {{
-      form.peso(class="form-control") }} {% if form.peso.errors %} {% for error
-      in form.peso.errors %}
-      <div class="text-danger">{{ error }}</div>
-      {% endfor %} {% endif %}
-    </div>
-    <div class="mb-3">
-      {{ form.sexo.label(class="form-label") }} {{
-      form.sexo(class="form-select") }} {% if form.sexo.errors %} {% for error
-      in form.sexo.errors %}
-      <div class="text-danger">{{ error }}</div>
-      {% endfor %} {% endif %}
-    </div>
-    <div class="mb-3">
-      {{ form.fator_atividade.label(class="form-label") }} {{
-      form.fator_atividade(class="form-select") }} {% if
-      form.fator_atividade.errors %} {% for error in form.fator_atividade.errors
-      %}
-      <div class="text-danger">{{ error }}</div>
-      {% endfor %} {% endif %}
-    </div>
-    <div class="mb-3">
-      {{ form.objetivo.label(class="form-label") }} {{
-      form.objetivo(class="form-select") }} {% if form.objetivo.errors %} {% for
-      error in form.objetivo.errors %}
-      <div class="text-danger">{{ error }}</div>
-      {% endfor %} {% endif %}
-    </div>
-    <div class="d-grid gap-2">
-      <button type="submit" class="btn btn-primary">Cadastrar</button>
-      <a href="{{ url_for('auth.login') }}" class="btn btn-secondary"
-        >Já tem uma conta? Faça login</a
-      >
-    </div>
-  </form>
+  </div>
 </div>
+{% endblock %} {% block extra_css %}
+<link
+  rel="stylesheet"
+  href="{{ url_for('static', filename='css/auth.css') }}"
+/>
 {% endblock %}
