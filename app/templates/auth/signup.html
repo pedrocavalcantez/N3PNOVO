@@ -2,10 +2,13 @@
 content %}
 <div class="container py-5">
   <div class="row justify-content-center">
-    <div class="col-md-6 col-lg-5">
+    <div class="col-md-8">
       <div class="auth-card">
         <div class="auth-header">
           <h4><i class="fas fa-user-plus me-2"></i>Cadastro</h4>
+          <p class="text-muted mb-0">
+            Preencha seus dados para criar uma conta
+          </p>
         </div>
         <div class="auth-body">
           <form
@@ -14,25 +17,139 @@ content %}
             class="auth-form"
           >
             {{ form.hidden_tag() }}
-            <div class="mb-3">
-              {{ form.username.label(class="form-label") }} {{
-              form.username(class="form-control") }}
+
+            <!-- Dados de Acesso -->
+            <div class="section-title mb-3">
+              <h5><i class="fas fa-key me-2"></i>Dados de Acesso</h5>
             </div>
-            <div class="mb-3">
-              {{ form.email.label(class="form-label") }} {{
-              form.email(class="form-control") }}
+            <div class="row g-3 mb-4">
+              <div class="col-md-6">
+                <div class="form-floating">
+                  {{ form.username(class="form-control", placeholder="Nome de
+                  usuário") }} {{ form.username.label }} {% if
+                  form.username.errors %} {% for error in form.username.errors
+                  %}
+                  <div class="invalid-feedback d-block">{{ error }}</div>
+                  {% endfor %} {% endif %}
+                </div>
+              </div>
+              <div class="col-md-6">
+                <div class="form-floating">
+                  {{ form.email(class="form-control", placeholder="Email") }} {{
+                  form.email.label }} {% if form.email.errors %} {% for error in
+                  form.email.errors %}
+                  <div class="invalid-feedback d-block">{{ error }}</div>
+                  {% endfor %} {% endif %}
+                </div>
+              </div>
+              <div class="col-md-6">
+                <div class="form-floating">
+                  {{ form.password(class="form-control", placeholder="Senha") }}
+                  {{ form.password.label }} {% if form.password.errors %} {% for
+                  error in form.password.errors %}
+                  <div class="invalid-feedback d-block">{{ error }}</div>
+                  {% endfor %} {% endif %}
+                </div>
+              </div>
+              <div class="col-md-6">
+                <div class="form-floating">
+                  {{ form.confirm_password(class="form-control",
+                  placeholder="Confirmar senha") }} {{
+                  form.confirm_password.label }} {% if
+                  form.confirm_password.errors %} {% for error in
+                  form.confirm_password.errors %}
+                  <div class="invalid-feedback d-block">{{ error }}</div>
+                  {% endfor %} {% endif %}
+                </div>
+              </div>
             </div>
-            <div class="mb-3">
-              {{ form.password.label(class="form-label") }} {{
-              form.password(class="form-control") }}
+
+            <!-- Dados Pessoais -->
+            <div class="section-title mb-3">
+              <h5><i class="fas fa-user me-2"></i>Dados Pessoais</h5>
             </div>
-            <div class="mb-4">
-              {{ form.confirm_password.label(class="form-label") }} {{
-              form.confirm_password(class="form-control") }}
+            <div class="row g-3 mb-4">
+              <div class="col-md-12">
+                <div class="form-floating">
+                  {{ form.nome(class="form-control", placeholder="Nome
+                  completo") }} {{ form.nome.label }} {% if form.nome.errors %}
+                  {% for error in form.nome.errors %}
+                  <div class="invalid-feedback d-block">{{ error }}</div>
+                  {% endfor %} {% endif %}
+                </div>
+              </div>
+              <div class="col-md-4">
+                <div class="form-floating">
+                  {{ form.idade(class="form-control", placeholder="Idade") }} {{
+                  form.idade.label }} {% if form.idade.errors %} {% for error in
+                  form.idade.errors %}
+                  <div class="invalid-feedback d-block">{{ error }}</div>
+                  {% endfor %} {% endif %}
+                </div>
+              </div>
+              <div class="col-md-4">
+                <div class="form-floating">
+                  {{ form.altura(class="form-control", placeholder="Altura") }}
+                  {{ form.altura.label }} {% if form.altura.errors %} {% for
+                  error in form.altura.errors %}
+                  <div class="invalid-feedback d-block">{{ error }}</div>
+                  {% endfor %} {% endif %}
+                </div>
+              </div>
+              <div class="col-md-4">
+                <div class="form-floating">
+                  {{ form.peso(class="form-control", placeholder="Peso") }} {{
+                  form.peso.label }} {% if form.peso.errors %} {% for error in
+                  form.peso.errors %}
+                  <div class="invalid-feedback d-block">{{ error }}</div>
+                  {% endfor %} {% endif %}
+                </div>
+              </div>
             </div>
-            <button type="submit" class="btn btn-auth">Cadastrar</button>
+
+            <!-- Informações Nutricionais -->
+            <div class="section-title mb-3">
+              <h5>
+                <i class="fas fa-heartbeat me-2"></i>Informações Nutricionais
+              </h5>
+            </div>
+            <div class="row g-3 mb-4">
+              <div class="col-md-6">
+                <div class="form-floating">
+                  {{ form.sexo(class="form-select", placeholder="Sexo") }} {{
+                  form.sexo.label }} {% if form.sexo.errors %} {% for error in
+                  form.sexo.errors %}
+                  <div class="invalid-feedback d-block">{{ error }}</div>
+                  {% endfor %} {% endif %}
+                </div>
+              </div>
+              <div class="col-md-6">
+                <div class="form-floating">
+                  {{ form.fator_atividade(class="form-select",
+                  placeholder="Fator de Atividade") }} {{
+                  form.fator_atividade.label }} {% if
+                  form.fator_atividade.errors %} {% for error in
+                  form.fator_atividade.errors %}
+                  <div class="invalid-feedback d-block">{{ error }}</div>
+                  {% endfor %} {% endif %}
+                </div>
+              </div>
+              <div class="col-md-12">
+                <div class="form-floating">
+                  {{ form.objetivo(class="form-select", placeholder="Objetivo")
+                  }} {{ form.objetivo.label }} {% if form.objetivo.errors %} {%
+                  for error in form.objetivo.errors %}
+                  <div class="invalid-feedback d-block">{{ error }}</div>
+                  {% endfor %} {% endif %}
+                </div>
+              </div>
+            </div>
+
+            <button type="submit" class="btn btn-primary w-100">
+              <i class="fas fa-user-plus me-2"></i>Criar Conta
+            </button>
           </form>
-          <div class="auth-links">
+          <div class="auth-links mt-4 text-center">
             <p class="mb-0">
               Já tem uma conta?
               <a href="{{ url_for('auth.login') }}">Faça login</a>
@@ -48,4 +165,63 @@ content %}
   rel="stylesheet"
   href="{{ url_for('static', filename='css/auth.css') }}"
 />
+{% endblock %} {% block extra_js %}
+<script>
+  document.addEventListener("DOMContentLoaded", function () {
+    // Format decimal inputs (altura and peso)
+    function formatDecimalInput(input) {
+      if (input.value && !isNaN(input.value)) {
+        const value = parseFloat(input.value);
+        if (value !== parseFloat(input.dataset.lastValue)) {
+          input.value = value.toFixed(1);
+          input.dataset.lastValue = input.value;
+        }
+      }
+    }
+
+    // Setup altura input
+    const alturaInput = document.querySelector('input[name="altura"]');
+    if (alturaInput) {
+      alturaInput.step = "0.1";
+      alturaInput.addEventListener("blur", function () {
+        formatDecimalInput(this);
+      });
+      alturaInput.addEventListener("input", function (e) {
+        this.value = this.value.replace(/[^\d.]/g, "");
+        const parts = this.value.split(".");
+        if (parts.length > 2) {
+          this.value = parts[0] + "." + parts.slice(1).join("");
+        }
+      });
+    }
+
+    // Setup peso input
+    const pesoInput = document.querySelector('input[name="peso"]');
+    if (pesoInput) {
+      pesoInput.step = "0.1";
+      pesoInput.addEventListener("blur", function () {
+        formatDecimalInput(this);
+      });
+      pesoInput.addEventListener("input", function (e) {
+        this.value = this.value.replace(/[^\d.]/g, "");
+        const parts = this.value.split(".");
+        if (parts.length > 2) {
+          this.value = parts[0] + "." + parts.slice(1).join("");
+        }
+      });
+    }
+
+    // Add animations to form sections
+    const sections = document.querySelectorAll(".section-title");
+    sections.forEach((section, index) => {
+      section.style.opacity = "0";
+      section.style.transform = "translateY(20px)";
+      setTimeout(() => {
+        section.style.transition = "all 0.5s ease";
+        section.style.opacity = "1";
+        section.style.transform = "translateY(0)";
+      }, 100 * (index + 1));
+    });
+  });
+</script>
 {% endblock %}

@@ -1,0 +1,68 @@
+:root {
+  /* Light Theme (default) */
+  --primary-color: #b4d957;
+  --primary-dark: #9fc748;
+  --secondary-color: #ff7f6b;
+  --secondary-dark: #ff6b54;
+
+  --bg-color: #ffffff;
+  --bg-secondary: #f8f9fa;
+  --text-color: #212529;
+  --text-muted: #6c757d;
+  --border-color: #dee2e6;
+
+  --shadow-sm: 0 2px 4px rgba(0, 0, 0, 0.05);
+  --shadow-md: 0 4px 6px rgba(0, 0, 0, 0.1);
+
+  --card-bg: #ffffff;
+  --input-bg: #ffffff;
+
+  --border-radius: 0.5rem;
+}
+
+/* Dark Theme */
+[data-theme="dark"] {
+  --bg-color: #1a1d21;
+  --bg-secondary: #242830;
+  --text-color: #e9ecef;
+  --text-muted: #adb5bd;
+  --border-color: #2d3238;
+
+  --card-bg: #242830;
+  --input-bg: #2d3238;
+
+  --shadow-sm: 0 2px 4px rgba(0, 0, 0, 0.2);
+  --shadow-md: 0 4px 6px rgba(0, 0, 0, 0.3);
+}
+
+/* Base Styles */
+body {
+  background-color: var(--bg-color);
+  color: var(--text-color);
+  transition: background-color 0.3s ease, color 0.3s ease;
+}
+
+/* Theme Toggle Button */
+.theme-toggle {
+  position: fixed;
+  bottom: 2rem;
+  right: 2rem;
+  background: var(--primary-color);
+  color: white;
+  border: none;
+  border-radius: 50%;
+  width: 3rem;
+  height: 3rem;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  cursor: pointer;
+  box-shadow: var(--shadow-md);
+  transition: all 0.3s ease;
+  z-index: 1000;
+}
+
+.theme-toggle:hover {
+  transform: scale(1.1);
+  background: var(--primary-dark);
+}

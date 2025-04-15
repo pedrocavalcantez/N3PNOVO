@@ -1,5 +1,12 @@
 from flask_wtf import FlaskForm
-from wtforms import StringField, PasswordField, FloatField, SelectField, IntegerField
+from wtforms import (
+    StringField,
+    PasswordField,
+    FloatField,
+    SelectField,
+    IntegerField,
+    SubmitField,
+)
 from wtforms.validators import DataRequired, Length, ValidationError, NumberRange
 from app.models import User
 from app.constants import ACTIVITY_FACTORS, OBJECTIVES, GENDER_CHOICES
@@ -28,6 +35,7 @@ class LoginForm(FlaskForm):
         "Username", validators=[DataRequired(), Length(min=4, max=80)]
     )
     password = PasswordField("Password", validators=[DataRequired(), Length(min=6)])
+    submit = SubmitField("Entrar")
 
 
 class SignupForm(FlaskForm):
@@ -38,6 +46,9 @@ class SignupForm(FlaskForm):
     )
     email = StringField("Email", validators=[DataRequired(), Length(max=120)])
     password = PasswordField("Password", validators=[DataRequired(), Length(min=6)])
+    confirm_password = PasswordField(
+        "Confirm Password", validators=[DataRequired(), Length(min=6)]
+    )
     nome = StringField("Nome", validators=[DataRequired(), Length(max=100)])
     idade = IntegerField(
         "Idade", validators=[DataRequired(), NumberRange(min=15, max=100)]
@@ -69,6 +80,11 @@ class SignupForm(FlaskForm):
         """Check if email is already taken"""
         if User.query.filter_by(email=field.data).first():
             raise ValidationError("Este email já está em uso.")
+
+    def validate_confirm_password(self, field):
+        """Check if passwords match"""
+        if field.data != self.password.data:
+            raise ValidationError("As senhas não coincidem.")
 
 
 class EditProfileForm(FlaskForm):

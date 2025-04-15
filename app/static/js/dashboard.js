@@ -463,6 +463,21 @@ function getDietInfo() {
 
 // Update addNewRow to use the helper function
 function addNewRow(mealType) {
+  const content = document.getElementById(`${mealType}-content`);
+  const btn = document
+    .querySelector(`#${mealType}-content`)
+    .closest(".card")
+    .querySelector(".expand-btn i");
+
+  // Ensure the section is expanded
+  if (content.style.display === "none") {
+    content.style.display = "block";
+    btn.classList.remove("fa-chevron-down");
+    btn.classList.add("fa-chevron-up");
+    content.style.opacity = "1";
+    content.style.transform = "translateY(0)";
+  }
+
   const tbody = document.getElementById(`${mealType}-foods`);
   const row = setupFoodRow(null, mealType);
 
@@ -940,6 +955,34 @@ document.addEventListener("DOMContentLoaded", function () {
       }
     });
   }
+
+  // Initialize meal sections
+  MEAL_TYPES.forEach((mealType) => {
+    const content = document.getElementById(`${mealType}-content`);
+    const btn = document
+      .querySelector(`#${mealType}-content`)
+      .closest(".card")
+      .querySelector(".expand-btn i");
+    const tbody = document.getElementById(`${mealType}-foods`);
+
+    // Check if there are any food rows (excluding the total row)
+    const hasFood =
+      tbody &&
+      Array.from(tbody.children).some(
+        (row) =>
+          !row.classList.contains("table-secondary") &&
+          !row.classList.contains("template-row")
+      );
+
+    if (hasFood) {
+      content.style.display = "block";
+      btn.classList.remove("fa-chevron-down");
+      btn.classList.add("fa-chevron-up");
+      // Animate the content
+      content.style.opacity = "1";
+      content.style.transform = "translateY(0)";
+    }
+  });
 });
 
 // Delete diet
@@ -969,5 +1012,36 @@ async function deleteDiet(dietId) {
     alert("Dieta excluída com sucesso!");
   } catch (error) {
     handleApiError(error, "Erro ao excluir dieta");
+  }
+}
+
+// Add this function to handle meal section toggling
+function toggleMealSection(mealType) {
+  const content = document.getElementById(`${mealType}-content`);
+  const btn = document
+    .querySelector(`#${mealType}-content`)
+    .closest(".card")
+    .querySelector(".expand-btn i");
+
+  if (content.style.display === "none") {
+    content.style.display = "block";
+    btn.classList.remove("fa-chevron-down");
+    btn.classList.add("fa-chevron-up");
+    // Animate the content
+    content.style.opacity = "0";
+    content.style.transform = "translateY(-10px)";
+    setTimeout(() => {
+      content.style.transition = "all 0.3s ease";
+      content.style.opacity = "1";
+      content.style.transform = "translateY(0)";
+    }, 10);
+  } else {
+    content.style.opacity = "0";
+    content.style.transform = "translateY(-10px)";
+    setTimeout(() => {
+      content.style.display = "none";
+      btn.classList.remove("fa-chevron-up");
+      btn.classList.add("fa-chevron-down");
+    }, 300);
   }
 }
