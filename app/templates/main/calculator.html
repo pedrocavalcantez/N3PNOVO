@@ -1,0 +1,242 @@
+{% extends "base.html" %} {% block title %}Calculadora de Porções{% endblock %}
+{% block content %}
+<div class="container">
+  <div class="row justify-content-center">
+    <div class="col-md-8">
+      <div class="card">
+        <div class="card-header">
+          <h4 class="mb-0">Calculadora de Porções</h4>
+        </div>
+        <div class="card-body">
+          <!-- Add hidden input for user weight -->
+          <input
+            type="hidden"
+            id="userWeight"
+            value="{{ current_user.peso }}"
+          />
+          <!-- Add hidden inputs for user goals -->
+          <input
+            type="hidden"
+            id="userCaloriesGoal"
+            value="{{ current_user.calories_goal }}"
+          />
+          <input
+            type="hidden"
+            id="userProteinsGoal"
+            value="{{ current_user.proteins_goal }}"
+          />
+          <input
+            type="hidden"
+            id="userCarbsGoal"
+            value="{{ current_user.carbs_goal }}"
+          />
+          <input
+            type="hidden"
+            id="userFatsGoal"
+            value="{{ current_user.fats_goal }}"
+          />
+
+          <form id="calculatorForm">
+            <!-- Target Values -->
+            <div class="mb-3">
+              <label class="form-label">Valores Desejados</label>
+              <div class="row g-3">
+                <div class="col-md-12 text-end">
+                  <button
+                    type="button"
+                    class="btn btn-secondary"
+                    onclick="importUserGoals()"
+                  >
+                    <i class="fas fa-file-import"></i> Importar Meta
+                  </button>
+                </div>
+                <div class="col-md-6">
+                  <div class="form-floating">
+                    <input
+                      type="number"
+                      class="form-control"
+                      id="targetCalories"
+                      min="0"
+                      step="1"
+                      placeholder="0"
+                    />
+                    <label for="targetCalories">Calorias (kcal)</label>
+                  </div>
+                </div>
+                <div class="col-md-6">
+                  <div class="form-floating">
+                    <input
+                      type="number"
+                      class="form-control"
+                      id="targetProteins"
+                      min="0"
+                      step="1"
+                      placeholder="0"
+                    />
+                    <label for="targetProteins">Proteínas (g)</label>
+                  </div>
+                </div>
+                <div class="col-md-6">
+                  <div class="form-floating">
+                    <input
+                      type="number"
+                      class="form-control"
+                      id="targetCarbs"
+                      min="0"
+                      step="1"
+                      placeholder="0"
+                    />
+                    <label for="targetCarbs">Carboidratos (g)</label>
+                  </div>
+                </div>
+                <div class="col-md-6">
+                  <div class="form-floating">
+                    <input
+                      type="number"
+                      class="form-control"
+                      id="targetFats"
+                      min="0"
+                      step="1"
+                      placeholder="0"
+                    />
+                    <label for="targetFats">Gorduras (g)</label>
+                  </div>
+                </div>
+              </div>
+              <small class="text-muted mt-2 d-block"
+                >Preencha pelo menos um dos valores desejados</small
+              >
+            </div>
+
+            <!-- Tolerance Slider -->
+            <div class="mb-4">
+              <label for="tolerance" class="form-label">Tolerância (%)</label>
+              <div class="d-flex align-items-center">
+                <input
+                  type="range"
+                  class="form-range flex-grow-1 me-2"
+                  id="tolerance"
+                  min="0"
+                  max="40"
+                  value="10"
+                  step="1"
+                  oninput="updateToleranceValue(this.value)"
+                />
+                <span
+                  id="toleranceValue"
+                  class="badge bg-secondary"
+                  style="min-width: 48px"
+                  >10%</span
+                >
+              </div>
+              <small class="text-muted"
+                >Define a margem de variação permitida para os valores
+                alvo</small
+              >
+            </div>
+
+            <!-- Foods Selection -->
+            <div class="mb-4">
+              <label class="form-label">Selecione os Alimentos</label>
+              <div id="foodsList">
+                <div class="food-item mb-3">
+                  <div class="input-group">
+                    <input
+                      type="text"
+                      class="form-control food-code"
+                      placeholder="Código do alimento"
+                      onkeyup="searchFood(this)"
+                    />
+                    <input
+                      type="number"
+                      class="form-control food-min"
+                      placeholder="Min (g)"
+                      style="max-width: 100px"
+                      min="0"
+                      step="1"
+                    />
+                    <input
+                      type="number"
+                      class="form-control food-max"
+                      placeholder="Max (g)"
+                      style="max-width: 100px"
+                      min="0"
+                      step="1"
+                    />
+                    <button
+                      type="button"
+                      class="btn btn-danger"
+                      onclick="removeFoodItem(this)"
+                    >
+                      <i class="fas fa-times"></i>
+                    </button>
+                    <div
+                      class="search-results d-none position-absolute w-100 bg-white border rounded-bottom shadow-sm"
+                      style="z-index: 1000; top: 100%"
+                    ></div>
+                  </div>
+                  <small class="text-muted"
+                    >Deixe min/max vazios para sem limites</small
+                  >
+                </div>
+              </div>
+              <button
+                type="button"
+                class="btn btn-secondary mt-2"
+                onclick="addFoodItem()"
+              >
+                <i class="fas fa-plus me-1"></i>Adicionar Alimento
+              </button>
+            </div>
+
+            <!-- Calculate Button -->
+            <div class="text-center">
+              <button type="submit" class="btn btn-primary">
+                <i class="fas fa-calculator me-1"></i>Calcular Porções
+              </button>
+            </div>
+          </form>
+
+          <!-- Results Section -->
+          <div id="results" class="mt-4 d-none">
+            <h5>Resultado:</h5>
+            <div class="table-responsive">
+              <table class="table table-bordered">
+                <thead>
+                  <tr>
+                    <th>Alimento</th>
+                    <th>Quantidade (g)</th>
+                    <th>Calorias</th>
+                    <th>Proteínas (g)</th>
+                    <th>Carboidratos (g)</th>
+                    <th>Gorduras (g)</th>
+                  </tr>
+                </thead>
+                <tbody id="resultsBody"></tbody>
+                <tfoot>
+                  <tr class="table-secondary">
+                    <td colspan="2"><strong>Total</strong></td>
+                    <td><span id="totalCalories">0</span></td>
+                    <td><span id="totalProteins">0</span></td>
+                    <td><span id="totalCarbs">0</span></td>
+                    <td><span id="totalFats">0</span></td>
+                  </tr>
+                  <tr class="table-info">
+                    <td colspan="2"><strong>Total/Peso (%)</strong></td>
+                    <td><span id="ratioCalories">0</span></td>
+                    <td><span id="ratioProteins">0</span></td>
+                    <td><span id="ratioCarbs">0</span></td>
+                    <td><span id="ratioFats">0</span></td>
+                  </tr>
+                </tfoot>
+              </table>
+            </div>
+          </div>
+        </div>
+      </div>
+    </div>
+  </div>
+</div>
+{% endblock %} {% block extra_js %}
+<script src="{{ url_for('static', filename='js/calculator.js') }}"></script>
+{% endblock %}

@@ -98,3 +98,9 @@ def dashboard():
         meals=meals,
         meal_totals=meal_totals,
     )
+
+
+@bp.route("/calculator")
+@login_required
+def calculator():
+    return render_template("main/calculator.html")

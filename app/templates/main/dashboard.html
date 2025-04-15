@@ -8,7 +8,9 @@
         <div
           class="card-header d-flex justify-content-between align-items-center"
         >
-          <h4 class="mb-0">Resumo Nutricional do Dia</h4>
+          <h4 class="mb-0">
+            Resumo Nutricional do Dia - {{ current_user.nome }}
+          </h4>
           <div>
             <button
               class="btn btn-primary me-2"
@@ -57,7 +59,9 @@
                       {{ "%.1f"|format(daily_totals.proteins) }}g
                     </p>
                     <small class="text-muted"
-                      >Meta: {{ "%.1f"|format(user_goals.proteins) }}g</small
+                      >Meta: {{ "%.1f"|format(user_goals.proteins) }}g ({{
+                      "%.1f"|format(user_goals.proteins/current_user.peso)
+                      }}g/kg)</small
                     >
                   </div>
                 </div>
@@ -66,7 +70,9 @@
                     <h6>Carboidratos</h6>
                     <p class="mb-0">{{ "%.1f"|format(daily_totals.carbs) }}g</p>
                     <small class="text-muted"
-                      >Meta: {{ "%.1f"|format(user_goals.carbs) }}g</small
+                      >Meta: {{ "%.1f"|format(user_goals.carbs) }}g ({{
+                      "%.1f"|format(user_goals.carbs/current_user.peso)
+                      }}g/kg)</small
                     >
                   </div>
                 </div>
@@ -75,7 +81,9 @@
                     <h6>Gorduras</h6>
                     <p class="mb-0">{{ "%.1f"|format(daily_totals.fats) }}g</p>
                     <small class="text-muted"
-                      >Meta: {{ "%.1f"|format(user_goals.fats) }}g</small
+                      >Meta: {{ "%.1f"|format(user_goals.fats) }}g ({{
+                      "%.1f"|format(user_goals.fats/current_user.peso)
+                      }}g/kg)</small
                     >
                   </div>
                 </div>
