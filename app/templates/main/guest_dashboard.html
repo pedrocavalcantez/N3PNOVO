@@ -6,7 +6,16 @@
     <div class="col-md-12">
       <div class="card">
         <div class="card-header">
-          <h4 class="mb-0">Resumo Nutricional do Dia</h4>
+          <div class="d-flex justify-content-between align-items-center">
+            <h4 class="mb-0">Resumo Nutricional do Dia</h4>
+            <button
+              class="btn btn-success"
+              onclick="exportToExcel()"
+              title="Exportar para Excel"
+            >
+              <i class="fas fa-file-excel me-1"></i>Exportar
+            </button>
+          </div>
         </div>
         <div class="card-body">
           <div class="row">

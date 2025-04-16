@@ -1,4 +1,4 @@
-from flask import render_template, redirect, url_for, flash, request
+from flask import render_template, redirect, url_for, flash, request, jsonify
 from flask_login import login_user, logout_user, login_required, current_user
 from urllib.parse import urlparse
 from app import db
@@ -108,7 +108,7 @@ def profile():
         try:
             db.session.commit()
             flash("Perfil atualizado com sucesso!", "success")
-            return redirect(url_for("main.dashboard"))
+            return redirect(url_for("auth.profile"))
         except Exception as e:
             db.session.rollback()
             flash("Erro ao atualizar perfil. Por favor, tente novamente.", "danger")
@@ -132,3 +132,34 @@ def profile():
         user_goals=user_goals,
         user=current_user,
     )
+
+
+@bp.route("/profile/update_goals", methods=["POST"])
+@login_required
+def update_goals():
+    try:
+        calories_goal = float(request.form.get("calories_goal"))
+        proteins_percentage = float(request.form.get("proteins_percentage")) / 100
+        carbs_percentage = float(request.form.get("carbs_percentage")) / 100
+        fats_percentage = float(request.form.get("fats_percentage")) / 100
+
+        current_user.update_goals(
+            calories_goal=calories_goal,
+            proteins_percentage=proteins_percentage,
+            carbs_percentage=carbs_percentage,
+            fats_percentage=fats_percentage,
+            commit=True,
+        )
+
+        return jsonify(
+            {"success": True, "message": "Metas nutricionais atualizadas com sucesso!"}
+        )
+    except ValueError as e:
+        return jsonify({"success": False, "message": str(e)}), 400
+    except Exception as e:
+        return jsonify(
+            {
+                "success": False,
+                "message": "Erro ao atualizar metas nutricionais. Por favor, tente novamente.",
+            }
+        ), 500

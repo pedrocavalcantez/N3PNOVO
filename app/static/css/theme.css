@@ -44,25 +44,25 @@ body {
 
 /* Theme Toggle Button */
 .theme-toggle {
-  position: fixed;
-  bottom: 2rem;
-  right: 2rem;
-  background: var(--primary-color);
-  color: white;
+  background: none;
   border: none;
-  border-radius: 50%;
-  width: 3rem;
-  height: 3rem;
+  color: rgba(255, 255, 255, 0.9) !important;
+  padding: 0.5rem 0;
+  margin: 0 1rem;
+  cursor: pointer;
+  transition: all 0.3s ease;
   display: flex;
   align-items: center;
   justify-content: center;
-  cursor: pointer;
-  box-shadow: var(--shadow-md);
-  transition: all 0.3s ease;
-  z-index: 1000;
+  line-height: 1.5;
 }
 
 .theme-toggle:hover {
+  color: var(--primary-color) !important;
   transform: scale(1.1);
-  background: var(--primary-dark);
+}
+
+.theme-toggle i {
+  font-size: 1.1rem;
+  vertical-align: middle;
 }

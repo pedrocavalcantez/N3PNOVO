@@ -36,13 +36,16 @@
     {% block extra_css %}{% endblock %}
   </head>
   <body>
-    <!-- Theme Toggle Button -->
-    <button class="theme-toggle" onclick="toggleTheme()" title="Alternar tema">
-      <i class="fas fa-moon"></i>
-    </button>
-
     <nav class="navbar navbar-expand-lg navbar-dark bg-dark">
       <div class="container">
+        <button
+          class="nav-link theme-toggle"
+          onclick="toggleTheme()"
+          title="Alternar tema"
+        >
+          <i class="fas fa-moon"></i>
+        </button>
+
         <a class="navbar-brand" href="{{ url_for('main.index') }}">N3P</a>
         <button
           class="navbar-toggler"

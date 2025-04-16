@@ -1,8 +1,11 @@
-from flask import jsonify, request
+from flask import jsonify, request, send_file
 from flask_login import login_required, current_user
 from app import db
 from app.blueprints.api import bp
 from app.models import Diet, FoodData
+from datetime import datetime
+import pandas as pd
+from io import BytesIO
 
 
 @bp.route("/search_food")
@@ -426,3 +429,138 @@ def calculate_portions():
 
     except Exception as e:
         return jsonify({"success": False, "error": str(e)}), 500
+
+
+@bp.route("/export_diet", methods=["POST"])
+@login_required
+def export_diet():
+    try:
+        # Get the diet data from the request
+        meals_data = request.get_json()
+
+        # Create a BytesIO object to store the Excel file
+        excel_file = BytesIO()
+
+        # Create an Excel writer object
+        with pd.ExcelWriter(excel_file, engine="openpyxl") as writer:
+            # Dictionary for meal type translations
+            meal_names = {
+                "cafe_da_manha": "Café da Manhã",
+                "lanche_manha": "Lanche da Manhã",
+                "almoco": "Almoço",
+                "lanche_tarde": "Lanche da Tarde",
+                "janta": "Jantar",
+                "ceia": "Ceia",
+            }
+
+            # Create summary DataFrame
+            summary_data = {
+                "Informações do Usuário": [
+                    f"Nome: {current_user.nome}",
+                    f"Idade: {current_user.idade} anos",
+                    f"Altura: {current_user.altura} cm",
+                    f"Peso: {current_user.peso} kg",
+                    f"Sexo: {'Masculino' if current_user.sexo == 'M' else 'Feminino'}",
+                    f"Data: {datetime.now().strftime('%d/%m/%Y')}",
+                    "",  # Empty row for spacing
+                    "Resumo por Refeição:",
+                ]
+            }
+
+            # Calculate totals for each meal
+            meal_totals = []
+            for meal_type, foods in meals_data.items():
+                if not foods:
+                    continue
+
+                meal_name = meal_names.get(meal_type, meal_type)
+                total_calories = sum(food.get("calories", 0) for food in foods)
+                total_proteins = sum(food.get("proteins", 0) for food in foods)
+                total_carbs = sum(food.get("carbs", 0) for food in foods)
+                total_fats = sum(food.get("fats", 0) for food in foods)
+
+                meal_totals.append(
+                    {
+                        "Refeição": meal_name,
+                        "Calorias": total_calories,
+                        "Proteínas (g)": total_proteins,
+                        "Carboidratos (g)": total_carbs,
+                        "Gorduras (g)": total_fats,
+                    }
+                )
+
+            # Create summary sheet
+            summary_df = pd.DataFrame(summary_data)
+            summary_df.to_excel(writer, sheet_name="Resumo", index=False)
+
+            # Add meal totals table to summary sheet
+            if meal_totals:
+                totals_df = pd.DataFrame(meal_totals)
+                # Add daily totals row
+                daily_totals = {
+                    "Refeição": "Total Diário",
+                    "Calorias": sum(float(m["Calorias"]) for m in meal_totals),
+                    "Proteínas (g)": sum(
+                        float(m["Proteínas (g)"]) for m in meal_totals
+                    ),
+                    "Carboidratos (g)": sum(
+                        float(m["Carboidratos (g)"]) for m in meal_totals
+                    ),
+                    "Gorduras (g)": sum(float(m["Gorduras (g)"]) for m in meal_totals),
+                }
+                totals_df = pd.concat([totals_df, pd.DataFrame([daily_totals])])
+                totals_df.to_excel(
+                    writer, sheet_name="Resumo", startrow=10, index=False
+                )
+
+            # Format summary sheet
+            worksheet = writer.sheets["Resumo"]
+            for idx in range(1, 20):  # Adjust column widths
+                worksheet.column_dimensions[chr(64 + idx)].width = 20
+
+            # Create individual meal sheets
+            for meal_type, foods in meals_data.items():
+                if not foods:  # Skip empty meals
+                    continue
+
+                # Convert the foods list to a DataFrame
+                df = pd.DataFrame(foods)
+
+                # Rename columns to Portuguese
+                df = df.rename(
+                    columns={
+                        "food_code": "Alimento",
+                        "quantity": "Quantidade (g)",
+                        "calories": "Calorias",
+                        "proteins": "Proteínas (g)",
+                        "carbs": "Carboidratos (g)",
+                        "fats": "Gorduras (g)",
+                    }
+                )
+                df.drop("id", axis=1, inplace=True)
+
+                # Write the DataFrame to a sheet
+                sheet_name = meal_names.get(meal_type, meal_type)
+                df.to_excel(writer, sheet_name=sheet_name, index=False)
+
+                # Get the worksheet to adjust column widths
+                worksheet = writer.sheets[sheet_name]
+                for idx, col in enumerate(df.columns):
+                    # Calculate max width needed
+                    max_length = max(df[col].astype(str).apply(len).max(), len(col)) + 2
+                    # Set column width
+                    worksheet.column_dimensions[chr(65 + idx)].width = max_length
+
+        # Seek to the beginning of the file
+        excel_file.seek(0)
+
+        # Return the file
+        return send_file(
+            excel_file,
+            mimetype="application/vnd.openxmlformats-officedocument.spreadsheetml.sheet",
+            as_attachment=True,
+            download_name=f"dieta_{datetime.now().strftime('%Y-%m-%d')}.xlsx",
+        )
+
+    except Exception as e:
+        return jsonify({"error": str(e)}), 500

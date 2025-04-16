@@ -258,78 +258,10 @@
   </div>
 </div>
 {% endblock %} {% block extra_css %}
-<style>
-  .form-control,
-  .form-select {
-    border-radius: 4px;
-    border: 1px solid #dee2e6;
-  }
-
-  .form-control:focus,
-  .form-select:focus {
-    border-color: #b4d957;
-    box-shadow: 0 0 0 0.2rem rgba(180, 217, 87, 0.25);
-  }
-
-  .form-range::-webkit-slider-thumb {
-    background: #b4d957;
-  }
-
-  .form-range::-moz-range-thumb {
-    background: #b4d957;
-  }
-
-  .form-range::-ms-thumb {
-    background: #b4d957;
-  }
-
-  .calculator-form {
-    animation: fadeIn 0.5s ease-out;
-  }
-
-  .search-results {
-    max-height: 200px;
-    overflow-y: auto;
-  }
-
-  .search-result {
-    padding: 0.5rem 1rem;
-    cursor: pointer;
-    transition: background-color 0.2s;
-  }
-
-  .search-result:hover {
-    background-color: rgba(180, 217, 87, 0.1);
-  }
-
-  .food-item {
-    animation: slideIn 0.3s ease-out;
-  }
-
-  .table {
-    animation: fadeIn 0.5s ease-out;
-  }
-
-  @keyframes fadeIn {
-    from {
-      opacity: 0;
-    }
-    to {
-      opacity: 1;
-    }
-  }
-
-  @keyframes slideIn {
-    from {
-      opacity: 0;
-      transform: translateY(-10px);
-    }
-    to {
-      opacity: 1;
-      transform: translateY(0);
-    }
-  }
-</style>
+<link
+  rel="stylesheet"
+  href="{{ url_for('static', filename='css/calculator.css') }}"
+/>
 {% endblock %} {% block extra_js %}
 <script src="{{ url_for('static', filename='js/calculator.js') }}"></script>
 {% endblock %}

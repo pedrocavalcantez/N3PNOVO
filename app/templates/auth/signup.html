@@ -173,7 +173,9 @@ content %}
       if (input.value && !isNaN(input.value)) {
         const value = parseFloat(input.value);
         if (value !== parseFloat(input.dataset.lastValue)) {
-          input.value = value.toFixed(1);
+          // Allow 2 decimal places for altura, 1 for peso
+          const decimalPlaces = input.name === "altura" ? 2 : 1;
+          input.value = value.toFixed(decimalPlaces);
           input.dataset.lastValue = input.value;
         }
       }
@@ -182,7 +184,7 @@ content %}
     // Setup altura input
     const alturaInput = document.querySelector('input[name="altura"]');
     if (alturaInput) {
-      alturaInput.step = "0.1";
+      alturaInput.step = "0.01"; // Changed from 0.1 to 0.01 to allow 2 decimal places
       alturaInput.addEventListener("blur", function () {
         formatDecimalInput(this);
       });
@@ -191,6 +193,10 @@ content %}
         const parts = this.value.split(".");
         if (parts.length > 2) {
           this.value = parts[0] + "." + parts.slice(1).join("");
+        }
+        // Limit to 2 decimal places
+        if (parts.length === 2 && parts[1].length > 2) {
+          this.value = parts[0] + "." + parts[1].substring(0, 2);
         }
       });
     }
@@ -205,8 +211,8 @@ content %}
       pesoInput.addEventListener("input", function (e) {
         this.value = this.value.replace(/[^\d.]/g, "");
         const parts = this.value.split(".");
-        if (parts.length > 2) {
-          this.value = parts[0] + "." + parts.slice(1).join("");
+        if (parts.length === 2 && parts[1].length > 2) {
+          this.value = parts[0] + "." + parts[1].substring(0, 2);
         }
       });
     }

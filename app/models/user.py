@@ -102,20 +102,49 @@ class User(UserMixin, db.Model):
 
         return round(bmr * activity_multiplier * objective_multiplier)
 
-    def update_goals(self):
-        """Update nutrition goals based on calculated values"""
-        # Calculate daily calories
-        self.calories_goal = self.calculate_daily_calories()
+    # def update_goals(self):
+    #     """Update nutrition goals based on calculated values"""
+    #     # Calculate daily calories
+    #     self.calories_goal = self.calculate_daily_calories()
 
-        # Calculate macronutrient goals based on calories
-        # Proteins: 30% of calories (4 calories per gram)
-        self.proteins_goal = round((self.calories_goal * 0.30) / 4)
+    #     # Calculate macronutrient goals based on calories
+    #     # Proteins: 30% of calories (4 calories per gram)
+    #     self.proteins_goal = round((self.calories_goal * 0.30) / 4)
 
-        # Carbs: 40% of calories (4 calories per gram)
-        self.carbs_goal = round((self.calories_goal * 0.40) / 4)
+    #     # Carbs: 40% of calories (4 calories per gram)
+    #     self.carbs_goal = round((self.calories_goal * 0.40) / 4)
 
-        # Fats: 30% of calories (9 calories per gram)
-        self.fats_goal = round((self.calories_goal * 0.30) / 9)
+    #     # Fats: 30% of calories (9 calories per gram)
+    #     self.fats_goal = round((self.calories_goal * 0.30) / 9)
+
+    def update_goals(
+        self,
+        calories_goal=None,
+        proteins_percentage=0.3,
+        carbs_percentage=0.4,
+        fats_percentage=0.3,
+        commit=False,
+    ):
+        """Update nutrition goals with custom values"""
+        # Validate that percentages sum to 100%
+        total_percentage = proteins_percentage + carbs_percentage + fats_percentage
+        if abs(total_percentage - 1) > 0.1:
+            raise ValueError("A soma das porcentagens deve ser igual a 100%")
+
+        # Update calories goal
+        if calories_goal is None:
+            calories_goal = self.calculate_daily_calories()
+
+        self.calories_goal = calories_goal
+
+        # Calculate macronutrient goals based on custom percentages
+        self.proteins_goal = round((self.calories_goal * (proteins_percentage)) / 4)
+        self.carbs_goal = round((self.calories_goal * (carbs_percentage)) / 4)
+        self.fats_goal = round((self.calories_goal * (fats_percentage)) / 9)
+
+        # Save changes to database
+        if commit:
+            db.session.commit()
 
     def __repr__(self):
         return f"<User {self.username}>"

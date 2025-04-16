@@ -254,46 +254,45 @@ function editFoodRow(button) {
   const row = button.closest("tr");
   const cells = row.cells;
 
-  // Get current values
+  // Extrai os valores originais
   const foodCode = cells[0].textContent.trim();
   const quantity = parseFloat(cells[1].textContent);
+  const calories = parseFloat(cells[2].textContent);
+  const proteins = parseFloat(cells[3].textContent);
+  const carbs = parseFloat(cells[4].textContent);
+  const fats = parseFloat(cells[5].textContent);
 
-  // Convert first cell to food code input
+  // Transforma em campos editáveis
   cells[0].innerHTML = `
     <div class="input-group">
-      <input type="text" class="form-control food-code" placeholder="Código do alimento" 
-             onkeyup="searchFood(this)" value="${foodCode}"/>
-      <div class="search-results d-none position-absolute w-100 bg-white border rounded-bottom shadow-sm" 
-           style="z-index: 1000; top: 100%">
-      </div>
+      <input type="text" class="form-control food-code" value="${foodCode}" onkeyup="searchFood(this)">
+      <div class="search-results d-none position-absolute w-100 bg-white border rounded-bottom shadow-sm" style="z-index: 1000; top: 100%"></div>
     </div>
   `;
-
-  // Convert second cell to quantity input
   cells[1].innerHTML = `
-    <input type="number" class="form-control quantity" placeholder="" 
-           step="1" min="0" oninput="updateNutrition(this)" 
-           style="width: 80px" value="${quantity}"/>
+    <input type="number" class="form-control quantity" value="${quantity}" step="1" min="0" style="width: 80px" oninput="updateNutrition(this)">
   `;
 
-  // Show save button, hide edit button
-  const actionButtons =
-    cells[cells.length - 1].querySelector(".action-buttons");
+  // Coloca spans vazios com classes corretas para serem atualizados
+  cells[2].innerHTML = `<span class="calories">${calories.toFixed(1)}</span>`;
+  cells[3].innerHTML = `<span class="proteins">${proteins.toFixed(1)}g</span>`;
+  cells[4].innerHTML = `<span class="carbs">${carbs.toFixed(1)}g</span>`;
+  cells[5].innerHTML = `<span class="fats">${fats.toFixed(1)}g</span>`;
+
+  // Botões de ação
+  const actionButtons = cells[6].querySelector(".action-buttons");
+  const foodId = row.id.replace("food-", "");
   actionButtons.innerHTML = `
     <button class="btn btn-success save-food" onclick="saveFood(this, '${getMealType(
       row
     )}')" title="Salvar">
       <i class="fas fa-check"></i>
     </button>
-    <button class="btn btn-danger" onclick="deleteFood(${row.id.replace(
-      "food-",
-      ""
-    )})" title="Remover">
+    <button class="btn btn-danger" onclick="deleteFood(${foodId})" title="Remover">
       <i class="fas fa-trash"></i>
     </button>
   `;
 }
-
 // Helper function to get meal type from row
 function getMealType(row) {
   const tbody = row.closest("tbody");
@@ -1043,5 +1042,46 @@ function toggleMealSection(mealType) {
       btn.classList.remove("fa-chevron-up");
       btn.classList.add("fa-chevron-down");
     }, 300);
+  }
+}
+
+// Add export to Excel functionality
+async function exportToExcel() {
+  try {
+    // Collect all meal data
+    const mealsData = collectMealsData();
+
+    // Get the current date for the filename
+    const date = new Date().toISOString().split("T")[0];
+    const filename = `dieta_${date}.xlsx`;
+
+    // Make API call to get the Excel file
+    const response = await fetch("/api/export_diet", {
+      method: "POST",
+      headers: {
+        "Content-Type": "application/json",
+      },
+      body: JSON.stringify(mealsData),
+    });
+
+    if (!response.ok) {
+      throw new Error("Erro ao exportar dieta");
+    }
+
+    // Convert response to blob
+    const blob = await response.blob();
+
+    // Create download link and trigger download
+    const url = window.URL.createObjectURL(blob);
+    const a = document.createElement("a");
+    a.href = url;
+    a.download = filename;
+    document.body.appendChild(a);
+    a.click();
+    window.URL.revokeObjectURL(url);
+    document.body.removeChild(a);
+  } catch (error) {
+    console.error("Export Error:", error);
+    alert("Erro ao exportar dieta: " + error.message);
   }
 }
