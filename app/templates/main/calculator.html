@@ -1,267 +1,407 @@
-{% extends "base.html" %} {% block title %}Calculadora de Porções{% endblock %}
-{% block content %}
-<div class="container">
-  <div class="row justify-content-center">
-    <div class="col-md-10">
-      <!-- Flash Messages -->
-      {% with messages = get_flashed_messages(with_categories=true) %} {% if
-      messages %} {% for category, message in messages %}
-      <div
-        class="alert alert-{{ category }} alert-dismissible fade show mb-4"
-        role="alert"
-      >
-        {{ message }}
-        <button
-          type="button"
-          class="btn-close"
-          data-bs-dismiss="alert"
-          aria-label="Close"
-        ></button>
-      </div>
-      {% endfor %} {% endif %} {% endwith %}
-
-      <div class="text-center mb-4">
-        <h2 class="display-6">Calculadora de Porções</h2>
-        <p class="text-muted">
-          Calcule as porções ideais para atingir seus objetivos nutricionais
-        </p>
-      </div>
-
-      <!-- Hidden inputs -->
-      <input type="hidden" id="userWeight" value="{{ current_user.peso }}" />
-      <input
-        type="hidden"
-        id="userCaloriesGoal"
-        value="{{ current_user.calories_goal }}"
-      />
-      <input
-        type="hidden"
-        id="userProteinsGoal"
-        value="{{ current_user.proteins_goal }}"
-      />
-      <input
-        type="hidden"
-        id="userCarbsGoal"
-        value="{{ current_user.carbs_goal }}"
-      />
-      <input
-        type="hidden"
-        id="userFatsGoal"
-        value="{{ current_user.fats_goal }}"
-      />
-
-      <form id="calculatorForm" class="calculator-form">
-        <!-- Target Values -->
-        <div class="mb-4">
-          <div class="d-flex justify-content-between align-items-center mb-3">
-            <label class="form-label h5 mb-0">Valores Desejados</label>
+{% if request.args.get('complement') != 'true' %} {% extends "base.html" %} {%
+endif %} {% block title %}{% endblock %} {% if request.args.get('complement') ==
+'true' %}
+<!DOCTYPE html>
+<html>
+  <head>
+    <meta charset="utf-8" />
+    <meta name="viewport" content="width=device-width, initial-scale=1" />
+    <title>Calculadora de Porções</title>
+    <!-- Bootstrap CSS -->
+    <link
+      href="https://cdn.jsdelivr.net/npm/bootstrap@5.1.3/dist/css/bootstrap.min.css"
+      rel="stylesheet"
+    />
+    <!-- Font Awesome -->
+    <link
+      href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.0.0/css/all.min.css"
+      rel="stylesheet"
+    />
+    <!-- Custom CSS -->
+    <link
+      rel="stylesheet"
+      href="{{ url_for('static', filename='css/calculator.css') }}"
+    />
+    <style>
+      body {
+        background-color: #f8f9fa;
+        padding: 20px;
+      }
+    </style>
+  </head>
+  <body>
+    {% endif %} {% block content %}
+    <div class="container">
+      <div class="row justify-content-center">
+        <div class="col-md-10">
+          <!-- Flash Messages -->
+          {% with messages = get_flashed_messages(with_categories=true) %} {% if
+          messages %} {% for category, message in messages %}
+          <div
+            class="alert alert-{{ category }} alert-dismissible fade show mb-4"
+            role="alert"
+          >
+            {{ message }}
             <button
               type="button"
-              class="btn btn-sm"
-              style="background-color: #b4d957; color: white"
-              onclick="importUserGoals()"
-            >
-              <i class="fas fa-file-import me-1"></i> Importar Meta
-            </button>
+              class="btn-close"
+              data-bs-dismiss="alert"
+              aria-label="Close"
+            ></button>
           </div>
-          <div class="row g-3">
-            <div class="col-md-6">
-              <div class="form-floating">
-                <input
-                  type="number"
-                  class="form-control"
-                  id="targetCalories"
-                  min="0"
-                  step="1"
-                  placeholder="0"
-                />
-                <label for="targetCalories">Calorias (kcal)</label>
-              </div>
-            </div>
-            <div class="col-md-6">
-              <div class="form-floating">
-                <input
-                  type="number"
-                  class="form-control"
-                  id="targetProteins"
-                  min="0"
-                  step="1"
-                  placeholder="0"
-                />
-                <label for="targetProteins">Proteínas (g)</label>
-              </div>
-            </div>
-            <div class="col-md-6">
-              <div class="form-floating">
-                <input
-                  type="number"
-                  class="form-control"
-                  id="targetCarbs"
-                  min="0"
-                  step="1"
-                  placeholder="0"
-                />
-                <label for="targetCarbs">Carboidratos (g)</label>
-              </div>
-            </div>
-            <div class="col-md-6">
-              <div class="form-floating">
-                <input
-                  type="number"
-                  class="form-control"
-                  id="targetFats"
-                  min="0"
-                  step="1"
-                  placeholder="0"
-                />
-                <label for="targetFats">Gorduras (g)</label>
-              </div>
-            </div>
-          </div>
-          <small class="text-muted mt-2 d-block"
-            >Preencha pelo menos um dos valores desejados</small
-          >
-        </div>
+          {% endfor %} {% endif %} {% endwith %}
 
-        <!-- Tolerance Slider -->
-        <div class="mb-4">
-          <label for="tolerance" class="form-label h5">Tolerância (%)</label>
-          <div class="d-flex align-items-center gap-2">
-            <input
-              type="range"
-              class="form-range flex-grow-1"
-              id="tolerance"
-              min="0"
-              max="40"
-              value="10"
-              step="1"
-              oninput="updateToleranceValue(this.value)"
-            />
-            <span
-              id="toleranceValue"
-              class="badge"
-              style="background-color: #b4d957; min-width: 48px"
-              >10%</span
-            >
+          <div class="text-center mb-4">
+            <h2 class="display-6">Calculadora de Porções</h2>
+            <p class="text-muted">
+              Calcule as porções ideais para atingir seus objetivos nutricionais
+            </p>
           </div>
-          <small class="text-muted"
-            >Define a margem de variação permitida para os valores alvo</small
-          >
-        </div>
 
-        <!-- Foods Selection -->
-        <div class="mb-4">
-          <div class="d-flex justify-content-between align-items-center mb-3">
-            <label class="form-label h5 mb-0">Selecione os Alimentos</label>
-            <button
-              type="button"
-              class="btn btn-sm"
-              style="background-color: #b4d957; color: white"
-              onclick="addFoodItem()"
-            >
-              <i class="fas fa-plus me-1"></i>Adicionar Alimento
-            </button>
-          </div>
-          <div id="foodsList">
-            <div class="food-item mb-3">
-              <div class="input-group">
+          <!-- Hidden inputs -->
+          <input
+            type="hidden"
+            id="userWeight"
+            value="{{ current_user.peso }}"
+          />
+          <input
+            type="hidden"
+            id="userCaloriesGoal"
+            value="{{ current_user.calories_goal }}"
+          />
+          <input
+            type="hidden"
+            id="userProteinsGoal"
+            value="{{ current_user.proteins_goal }}"
+          />
+          <input
+            type="hidden"
+            id="userCarbsGoal"
+            value="{{ current_user.carbs_goal }}"
+          />
+          <input
+            type="hidden"
+            id="userFatsGoal"
+            value="{{ current_user.fats_goal }}"
+          />
+          <input
+            type="hidden"
+            id="isComplement"
+            value="{{ request.args.get('complement', 'false') }}"
+          />
+
+          <form id="calculatorForm" class="calculator-form">
+            <!-- Target Values -->
+            <div class="mb-4">
+              <div
+                class="d-flex justify-content-between align-items-center mb-3"
+              >
+                <h5 class="mb-0">
+                  Valores {% if request.args.get('complement') == 'true'
+                  %}Restantes{% else %}Desejados{% endif %}
+                </h5>
+                <div>
+                  {% if request.args.get('complement') != 'true' %}
+                  <button
+                    type="button"
+                    class="btn btn-warning btn-sm"
+                    onclick="importUserGoals()"
+                  >
+                    <i class="fas fa-file-import me-1"></i> Importar Meta
+                  </button>
+                  {% else %}
+                  <button
+                    type="button"
+                    class="btn btn-warning btn-sm"
+                    onclick="importComplement()"
+                  >
+                    <i class="fas fa-sync me-1"></i> Atualizar Complemento
+                  </button>
+                  {% endif %}
+                </div>
+              </div>
+              <div class="row g-3">
+                <div class="col-md-6">
+                  <div class="form-floating">
+                    <input
+                      type="number"
+                      class="form-control"
+                      id="targetCalories"
+                      min="0"
+                      step="1"
+                      placeholder="0"
+                      value="{{ request.args.get('calories', '0') }}"
+                    />
+                    <label for="targetCalories">Calorias (kcal)</label>
+                  </div>
+                </div>
+                <div class="col-md-6">
+                  <div class="form-floating">
+                    <input
+                      type="number"
+                      class="form-control"
+                      id="targetProteins"
+                      min="0"
+                      step="1"
+                      placeholder="0"
+                      value="{{ request.args.get('proteins', '0') }}"
+                    />
+                    <label for="targetProteins">Proteínas (g)</label>
+                  </div>
+                </div>
+                <div class="col-md-6">
+                  <div class="form-floating">
+                    <input
+                      type="number"
+                      class="form-control"
+                      id="targetCarbs"
+                      min="0"
+                      step="1"
+                      placeholder="0"
+                      value="{{ request.args.get('carbs', '0') }}"
+                    />
+                    <label for="targetCarbs">Carboidratos (g)</label>
+                  </div>
+                </div>
+                <div class="col-md-6">
+                  <div class="form-floating">
+                    <input
+                      type="number"
+                      class="form-control"
+                      id="targetFats"
+                      min="0"
+                      step="1"
+                      placeholder="0"
+                      value="{{ request.args.get('fats', '0') }}"
+                    />
+                    <label for="targetFats">Gorduras (g)</label>
+                  </div>
+                </div>
+              </div>
+              <small class="text-muted mt-2 d-block"
+                >Preencha pelo menos um dos valores desejados</small
+              >
+            </div>
+
+            <!-- Tolerance Slider -->
+            <div class="mb-4">
+              <h5 class="mb-2">Tolerância (%)</h5>
+              <div class="d-flex align-items-center gap-2">
                 <input
-                  type="text"
-                  class="form-control food-code"
-                  placeholder="Código do alimento"
-                  onkeyup="searchFood(this)"
-                />
-                <input
-                  type="number"
-                  class="form-control food-min"
-                  placeholder="Min (g)"
-                  style="max-width: 100px"
+                  type="range"
+                  class="form-range flex-grow-1"
+                  id="tolerance"
                   min="0"
+                  max="40"
+                  value="10"
                   step="1"
+                  oninput="updateToleranceValue(this.value)"
                 />
-                <input
-                  type="number"
-                  class="form-control food-max"
-                  placeholder="Max (g)"
-                  style="max-width: 100px"
-                  min="0"
-                  step="1"
-                />
+                <span
+                  id="toleranceValue"
+                  class="badge"
+                  style="background-color: #b4d957; min-width: 48px"
+                  >10%</span
+                >
+              </div>
+            </div>
+
+            <!-- Foods Selection -->
+            <div class="mb-4">
+              <div
+                class="d-flex justify-content-between align-items-center mb-3"
+              >
+                <h5 class="mb-0">Selecione os Alimentos</h5>
                 <button
                   type="button"
-                  class="btn"
-                  style="background-color: #ff7f6b; color: white"
-                  onclick="removeFoodItem(this)"
+                  class="btn btn-warning btn-sm"
+                  onclick="addFoodItem()"
                 >
-                  <i class="fas fa-times"></i>
+                  <i class="fas fa-plus me-1"></i>Adicionar Alimento
                 </button>
-                <div
-                  class="search-results d-none position-absolute w-100 bg-white border rounded-3 shadow-sm"
-                  style="z-index: 1000; top: 100%"
-                ></div>
               </div>
-              <small class="text-muted"
+              <div id="foodsList">
+                <div class="food-item">
+                  <div class="input-group">
+                    <input
+                      type="text"
+                      class="form-control food-code"
+                      placeholder="Código do alimento"
+                      onkeyup="searchFood(this)"
+                    />
+                    <input
+                      type="number"
+                      class="form-control food-min"
+                      placeholder="Min (g)"
+                      style="max-width: 100px"
+                      min="0"
+                      step="1"
+                    />
+                    <input
+                      type="number"
+                      class="form-control food-max"
+                      placeholder="Max (g)"
+                      style="max-width: 100px"
+                      min="0"
+                      step="1"
+                    />
+                    <button
+                      type="button"
+                      class="btn"
+                      style="background-color: #ff7f6b; color: white"
+                      onclick="removeFoodItem(this)"
+                    >
+                      <i class="fas fa-times"></i>
+                    </button>
+                    <div
+                      class="search-results d-none position-absolute w-100 bg-white border rounded-3 shadow-sm"
+                      style="z-index: 1000; top: 100%"
+                    ></div>
+                  </div>
+                </div>
+              </div>
+              <small class="text-muted d-block mt-2"
                 >Deixe min/max vazios para sem limites</small
               >
             </div>
+
+            <!-- Calculate Button -->
+            <div class="text-center mb-4">
+              <button type="submit" class="btn btn-warning btn-lg px-4">
+                <i class="fas fa-calculator me-2"></i>Calcular Porções
+              </button>
+            </div>
+          </form>
+
+          <!-- Results Section -->
+          <div id="results" class="mt-4 d-none">
+            <div class="d-flex justify-content-between align-items-center mb-3">
+              <h5 class="mb-0">Resultado:</h5>
+              {% if request.args.get('complement') == 'true' %}
+              <!-- Botão visível inicialmente -->
+              <!-- Botão principal -->
+              <div class="d-flex justify-content-end">
+                <button
+                  type="button"
+                  class="btn btn-success"
+                  onclick="openMealSelectModal()"
+                >
+                  <i class="fas fa-file-import me-1"></i> Importar Refeições
+                </button>
+              </div>
+
+              <!-- Modal de Seleção de Refeição -->
+              <div
+                class="modal fade"
+                id="mealSelectModal"
+                tabindex="-1"
+                aria-labelledby="mealSelectModalLabel"
+                aria-hidden="true"
+              >
+                <div class="modal-dialog modal-dialog-centered">
+                  <div class="modal-content shadow">
+                    <div class="modal-header">
+                      <h5 class="modal-title" id="mealSelectModalLabel">
+                        Para qual refeição deseja importar?
+                      </h5>
+                      <button
+                        type="button"
+                        class="btn-close"
+                        data-bs-dismiss="modal"
+                        aria-label="Fechar"
+                      ></button>
+                    </div>
+                    <div class="modal-body text-center">
+                      <div class="d-grid gap-2">
+                        <button
+                          class="btn btn-outline-primary"
+                          onclick="confirmImport('cafe_da_manha')"
+                        >
+                          🥐 Café da Manhã
+                        </button>
+                        <button
+                          class="btn btn-outline-primary"
+                          onclick="confirmImport('lanche_manha')"
+                        >
+                          🍎 Lanche da Manhã
+                        </button>
+                        <button
+                          class="btn btn-outline-primary"
+                          onclick="confirmImport('almoco')"
+                        >
+                          🍽️ Almoço
+                        </button>
+                        <button
+                          class="btn btn-outline-primary"
+                          onclick="confirmImport('lanche_tarde')"
+                        >
+                          ☕ Lanche da Tarde
+                        </button>
+                        <button
+                          class="btn btn-outline-primary"
+                          onclick="confirmImport('janta')"
+                        >
+                          🍲 Jantar
+                        </button>
+                        <button
+                          class="btn btn-outline-primary"
+                          onclick="confirmImport('ceia')"
+                        >
+                          🌙 Ceia
+                        </button>
+                      </div>
+                    </div>
+                  </div>
+                </div>
+              </div>
+
+              {% endif %}
+            </div>
+            <div class="table-responsive">
+              <table class="table table-hover">
+                <thead class="table-light">
+                  <tr>
+                    <th>Alimento</th>
+                    <th>Quantidade (g)</th>
+                    <th>Calorias</th>
+                    <th>Proteínas (g)</th>
+                    <th>Carboidratos (g)</th>
+                    <th>Gorduras (g)</th>
+                  </tr>
+                </thead>
+                <tbody id="resultsBody"></tbody>
+                <tfoot>
+                  <tr class="table-light">
+                    <td colspan="2"><strong>Total</strong></td>
+                    <td><span id="totalCalories">0</span></td>
+                    <td><span id="totalProteins">0</span></td>
+                    <td><span id="totalCarbs">0</span></td>
+                    <td><span id="totalFats">0</span></td>
+                  </tr>
+                  <tr class="table-light">
+                    <td colspan="2"><strong>Por kg de peso</strong></td>
+                    <td><span id="ratioCalories">0</span></td>
+                    <td><span id="ratioProteins">0</span></td>
+                    <td><span id="ratioCarbs">0</span></td>
+                    <td><span id="ratioFats">0</span></td>
+                  </tr>
+                </tfoot>
+              </table>
+            </div>
           </div>
-        </div>
-
-        <!-- Calculate Button -->
-        <div class="text-center mb-4">
-          <button
-            type="submit"
-            class="btn btn-lg px-4"
-            style="background-color: #b4d957; color: white"
-          >
-            <i class="fas fa-calculator me-2"></i>Calcular Porções
-          </button>
-        </div>
-      </form>
-
-      <!-- Results Section -->
-      <div id="results" class="mt-4 d-none">
-        <h5 class="mb-3">Resultado:</h5>
-        <div class="table-responsive">
-          <table class="table table-hover">
-            <thead class="table-light">
-              <tr>
-                <th>Alimento</th>
-                <th>Quantidade (g)</th>
-                <th>Calorias</th>
-                <th>Proteínas (g)</th>
-                <th>Carboidratos (g)</th>
-                <th>Gorduras (g)</th>
-              </tr>
-            </thead>
-            <tbody id="resultsBody"></tbody>
-            <tfoot>
-              <tr class="table-light">
-                <td colspan="2"><strong>Total</strong></td>
-                <td><span id="totalCalories">0</span></td>
-                <td><span id="totalProteins">0</span></td>
-                <td><span id="totalCarbs">0</span></td>
-                <td><span id="totalFats">0</span></td>
-              </tr>
-              <tr class="table-secondary">
-                <td colspan="2"><strong>Total/Peso (%)</strong></td>
-                <td><span id="ratioCalories">0</span></td>
-                <td><span id="ratioProteins">0</span></td>
-                <td><span id="ratioCarbs">0</span></td>
-                <td><span id="ratioFats">0</span></td>
-              </tr>
-            </tfoot>
-          </table>
         </div>
       </div>
     </div>
-  </div>
-</div>
-{% endblock %} {% block extra_css %}
+    {% endblock %} {% if request.args.get('complement') == 'true' %}
+    <script src="https://cdn.jsdelivr.net/npm/bootstrap@5.1.3/dist/js/bootstrap.bundle.min.js"></script>
+    <script src="{{ url_for('static', filename='js/calculator.js') }}"></script>
+  </body>
+</html>
+{% else %} {% block extra_css %}
 <link
   rel="stylesheet"
   href="{{ url_for('static', filename='css/calculator.css') }}"
 />
 {% endblock %} {% block extra_js %}
 <script src="{{ url_for('static', filename='js/calculator.js') }}"></script>
-{% endblock %}
+{% endblock %} {% endif %}

@@ -33,6 +33,14 @@
             >
               <i class="fas fa-folder-open me-1"></i>Carregar Dieta
             </button>
+            <button
+              class="btn btn-warning me-2"
+              data-bs-toggle="modal"
+              data-bs-target="#calculatorModal"
+              onclick="document.getElementById('calculatorFrame').contentWindow.importComplement()"
+            >
+              <i class="fas fa-calculator me-1"></i>Calcular Complemento
+            </button>
           </div>
         </div>
         <div class="card-body">
@@ -43,10 +51,16 @@
                   class="d-flex justify-content-between align-items-center mb-1"
                 >
                   <span>Calorias</span>
-                  <span
-                    >{{ "%.1f"|format(daily_totals.calories) }} / {{
-                    "%.1f"|format(user_goals.calories) }} kcal</span
-                  >
+                  <span>
+                    <span id="daily-totals-calories"
+                      >{{ "%.1f"|format(daily_totals.calories) }}</span
+                    >
+                    /
+                    <span id="user-goals-calories"
+                      >{{ "%.1f"|format(user_goals.calories) }}</span
+                    >
+                    kcal
+                  </span>
                 </div>
                 <div class="progress">
                   <div
@@ -63,35 +77,57 @@
                   <div class="nutrient-box text-center p-2 rounded mb-2">
                     <h6>Proteínas</h6>
                     <p class="mb-0">
-                      {{ "%.1f"|format(daily_totals.proteins) }}g
+                      <span id="daily-totals-proteins"
+                        >{{ "%.1f"|format(daily_totals.proteins) }}</span
+                      >g
                     </p>
                     <small class="text-muted"
-                      >Meta: {{ "%.1f"|format(user_goals.proteins) }}g ({{
-                      "%.1f"|format(user_goals.proteins/current_user.peso)
-                      }}g/kg)</small
-                    >
+                      >Meta:
+                      <span id="user-goals-proteins"
+                        >{{ "%.1f"|format(user_goals.proteins) }}</span
+                      >g (<span
+                        >{{ "%.1f"|format(user_goals.proteins/current_user.peso)
+                        }}</span
+                      >g/kg)
+                    </small>
                   </div>
                 </div>
                 <div class="col-md-4">
                   <div class="nutrient-box text-center p-2 rounded mb-2">
                     <h6>Carboidratos</h6>
-                    <p class="mb-0">{{ "%.1f"|format(daily_totals.carbs) }}g</p>
+                    <p class="mb-0">
+                      <span id="daily-totals-carbs"
+                        >{{ "%.1f"|format(daily_totals.carbs) }}</span
+                      >g
+                    </p>
                     <small class="text-muted"
-                      >Meta: {{ "%.1f"|format(user_goals.carbs) }}g ({{
-                      "%.1f"|format(user_goals.carbs/current_user.peso)
-                      }}g/kg)</small
-                    >
+                      >Meta:
+                      <span id="user-goals-carbs"
+                        >{{ "%.1f"|format(user_goals.carbs) }}</span
+                      >g (<span
+                        >{{ "%.1f"|format(user_goals.carbs/current_user.peso)
+                        }}</span
+                      >g/kg)
+                    </small>
                   </div>
                 </div>
                 <div class="col-md-4">
                   <div class="nutrient-box text-center p-2 rounded mb-2">
                     <h6>Gorduras</h6>
-                    <p class="mb-0">{{ "%.1f"|format(daily_totals.fats) }}g</p>
+                    <p class="mb-0">
+                      <span id="daily-totals-fats"
+                        >{{ "%.1f"|format(daily_totals.fats) }}</span
+                      >g
+                    </p>
                     <small class="text-muted"
-                      >Meta: {{ "%.1f"|format(user_goals.fats) }}g ({{
-                      "%.1f"|format(user_goals.fats/current_user.peso)
-                      }}g/kg)</small
-                    >
+                      >Meta:
+                      <span id="user-goals-fats"
+                        >{{ "%.1f"|format(user_goals.fats) }}</span
+                      >g (<span
+                        >{{ "%.1f"|format(user_goals.fats/current_user.peso)
+                        }}</span
+                      >g/kg)
+                    </small>
                   </div>
                 </div>
               </div>
@@ -338,11 +374,44 @@
     </div>
   </div>
 </div>
+
+<!-- Calculator Modal -->
+<div class="modal fade" id="calculatorModal" tabindex="-1">
+  <div
+    class="modal-dialog modal-lg"
+    style="max-width: 95%; margin: 1.75rem auto"
+  >
+    <div class="modal-content">
+      <div class="modal-header">
+        <h5 class="modal-title">Calculadora de Complemento</h5>
+        <button
+          type="button"
+          class="btn-close"
+          data-bs-dismiss="modal"
+        ></button>
+      </div>
+      <div class="modal-body p-0">
+        <iframe
+          id="calculatorFrame"
+          src="{{ url_for('main.calculator') }}?complement=true&calories={{ (user_goals.calories - daily_totals.calories) | int }}&proteins={{ (user_goals.proteins - daily_totals.proteins) | int }}&carbs={{ (user_goals.carbs - daily_totals.carbs) | int }}&fats={{ (user_goals.fats - daily_totals.fats) | int }}"
+          style="width: 100%; height: 700px; border: none"
+        ></iframe>
+      </div>
+    </div>
+  </div>
+</div>
 {% endblock %} {% block extra_css %}
 <link
   rel="stylesheet"
   href="{{ url_for('static', filename='css/dashboard.css') }}"
 />
-{% endblock %} {% block extra_js %}
+{% if request.args.get('complement') == 'true' %}
+<link
+  rel="stylesheet"
+  href="{{ url_for('static', filename='css/calculator.css') }}"
+/>
+{% endif %} {% endblock %} {% block extra_js %}
 <script src="{{ url_for('static', filename='js/dashboard.js') }}"></script>
-{% endblock %}
+{% if request.args.get('complement') == 'true' %}
+<script src="{{ url_for('static', filename='js/calculator.js') }}"></script>
+{% endif %} {% endblock %}
