@@ -331,7 +331,7 @@ function createFoodRow(food) {
 function collectMealsData() {
   const mealsData = {};
 
-  MEAL_TYPES.forEach((mealType) => {
+  Object.keys(MEAL_TYPES).forEach((mealType) => {
     mealsData[mealType] = Array.from(
       document.querySelectorAll(
         `#${mealType}-foods tr:not(.table-secondary):not(.template-row)`
@@ -716,7 +716,7 @@ function updateDailyTotals() {
   };
 
   // Calculate totals for each meal type
-  MEAL_TYPES.forEach((mealType) => {
+  Object.keys(MEAL_TYPES).forEach((mealType) => {
     const mealTotals = updateMealTotals(mealType);
     totals.calories += mealTotals.calories;
     totals.proteins += mealTotals.proteins;
@@ -867,8 +867,7 @@ document.addEventListener("DOMContentLoaded", function () {
   }
 
   // Calculate totals from existing rows on page load
-  //#console.log("Calculating initial totals...");
-  MEAL_TYPES.forEach((mealType) => {
+  Object.keys(MEAL_TYPES).forEach((mealType) => {
     console.log(`Calculating totals for ${mealType}...`);
     updateMealTotals(mealType);
   });
@@ -949,7 +948,7 @@ document.addEventListener("DOMContentLoaded", function () {
   }
 
   // Initialize meal sections
-  MEAL_TYPES.forEach((mealType) => {
+  Object.keys(MEAL_TYPES).forEach((mealType) => {
     const content = document.getElementById(`${mealType}-content`);
     const btn = document
       .querySelector(`#${mealType}-content`)
