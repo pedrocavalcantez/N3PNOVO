@@ -22,6 +22,14 @@ function addFoodItem() {
     searchResults.innerHTML = "";
   }
 
+  // Hide food info in the clone
+  const foodInfo = foodItem.querySelector(".food-info");
+  if (foodInfo) {
+    foodInfo.classList.add("d-none");
+    const spans = foodInfo.querySelectorAll("span");
+    spans.forEach((span) => (span.textContent = "0"));
+  }
+
   const foodsList = document.getElementById("foodsList");
   foodsList.appendChild(foodItem);
 
@@ -64,6 +72,11 @@ function removeFoodItem(button) {
     if (results) {
       results.classList.add("d-none");
       results.innerHTML = "";
+    }
+    // Hide food info
+    const foodInfo = foodItem.querySelector(".food-info");
+    if (foodInfo) {
+      foodInfo.classList.add("d-none");
     }
     // Clear from selectedFoods
     selectedFoods.clear();
@@ -113,6 +126,23 @@ function searchFood(input) {
                     min: null,
                     max: null,
                   });
+
+                  // Update food info display
+                  const foodItem = input.closest(".food-item");
+                  const foodInfo = foodItem.querySelector(".food-info");
+                  const foodQuantity = foodInfo.querySelector(".food-quantity");
+                  const foodCalories = foodInfo.querySelector(".food-calories");
+                  const foodProteins = foodInfo.querySelector(".food-proteins");
+                  const foodCarbs = foodInfo.querySelector(".food-carbs");
+                  const foodFats = foodInfo.querySelector(".food-fats");
+
+                  foodQuantity.textContent = foodData.quantity.toFixed(1);
+                  foodCalories.textContent = foodData.calories.toFixed(1);
+                  foodProteins.textContent = foodData.proteins.toFixed(1);
+                  foodCarbs.textContent = foodData.carbs.toFixed(1);
+                  foodFats.textContent = foodData.fats.toFixed(1);
+
+                  foodInfo.classList.remove("d-none");
                 } else {
                   showAlert(
                     foodData.error || "Erro no retorno da API",
@@ -400,7 +430,7 @@ function importUserGoals() {
       input.style.backgroundColor = "";
     }, 500);
   });
-  showAlert("Metas importadas com sucesso!", "success");
+  // showAlert("Metas importadas com sucesso!", "success");
 }
 
 // Função para limpar os resultados

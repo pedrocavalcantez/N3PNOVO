@@ -1,5 +1,9 @@
 {% extends "base.html" %} {% from "macros/forms.html" import render_food_row %}
 {% block title %}Dashboard - N3P{% endblock %} {% block content %}
+<script>
+  // Constants from server
+  const MEAL_TYPES = {{ meal_types|tojson }};
+</script>
 <div class="container">
   <!-- Nutritional Summary -->
   <div class="row mb-4">

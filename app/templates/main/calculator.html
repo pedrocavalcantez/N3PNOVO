@@ -101,7 +101,6 @@ endif %} {% block title %}{% endblock %} {% if request.args.get('complement') ==
                   %}Restantes{% else %}Desejados{% endif %}
                 </h5>
                 <div>
-                  {% if request.args.get('complement') != 'true' %}
                   <button
                     type="button"
                     class="btn btn-warning btn-sm"
@@ -109,7 +108,8 @@ endif %} {% block title %}{% endblock %} {% if request.args.get('complement') ==
                   >
                     <i class="fas fa-file-import me-1"></i> Importar Meta
                   </button>
-                  {% else %}
+
+                  {% if request.args.get('complement') == 'true' %}
                   <button
                     type="button"
                     class="btn btn-warning btn-sm"
@@ -222,41 +222,53 @@ endif %} {% block title %}{% endblock %} {% if request.args.get('complement') ==
               </div>
               <div id="foodsList">
                 <div class="food-item">
-                  <div class="input-group">
-                    <input
-                      type="text"
-                      class="form-control food-code"
-                      placeholder="Código do alimento"
-                      onkeyup="searchFood(this)"
-                    />
-                    <input
-                      type="number"
-                      class="form-control food-min"
-                      placeholder="Min (g)"
-                      style="max-width: 100px"
-                      min="0"
-                      step="1"
-                    />
-                    <input
-                      type="number"
-                      class="form-control food-max"
-                      placeholder="Max (g)"
-                      style="max-width: 100px"
-                      min="0"
-                      step="1"
-                    />
-                    <button
-                      type="button"
-                      class="btn"
-                      style="background-color: #ff7f6b; color: white"
-                      onclick="removeFoodItem(this)"
-                    >
-                      <i class="fas fa-times"></i>
-                    </button>
-                    <div
-                      class="search-results d-none position-absolute w-100 bg-white border rounded-3 shadow-sm"
-                      style="z-index: 1000; top: 100%"
-                    ></div>
+                  <div class="d-flex align-items-center gap-3">
+                    <div class="input-group">
+                      <input
+                        type="text"
+                        class="form-control food-code"
+                        placeholder="Código do alimento"
+                        onkeyup="searchFood(this)"
+                        style="min-width: 300px"
+                      />
+                      <input
+                        type="number"
+                        class="form-control food-min"
+                        placeholder="Min (g)"
+                        style="max-width: 100px"
+                        min="0"
+                        step="1"
+                      />
+                      <input
+                        type="number"
+                        class="form-control food-max"
+                        placeholder="Max (g)"
+                        style="max-width: 100px"
+                        min="0"
+                        step="1"
+                      />
+                      <button
+                        type="button"
+                        class="btn"
+                        style="background-color: #ff7f6b; color: white"
+                        onclick="removeFoodItem(this)"
+                      >
+                        <i class="fas fa-times"></i>
+                      </button>
+                      <div
+                        class="search-results d-none position-absolute w-100 bg-white border rounded-3 shadow-sm"
+                        style="z-index: 1000; top: 100%"
+                      ></div>
+                    </div>
+                    <div class="food-info d-none" style="white-space: nowrap">
+                      <small class="text-muted">
+                        Porção: <span class="food-quantity">0</span>g • Cal:
+                        <span class="food-calories">0</span> • Prot:
+                        <span class="food-proteins">0</span>g • Carb:
+                        <span class="food-carbs">0</span>g • Gord:
+                        <span class="food-fats">0</span>g
+                      </small>
+                    </div>
                   </div>
                 </div>
               </div>
@@ -313,42 +325,14 @@ endif %} {% block title %}{% endblock %} {% if request.args.get('complement') ==
                     </div>
                     <div class="modal-body text-center">
                       <div class="d-grid gap-2">
+                        {% for meal_type, meal_name in MEAL_TYPES.items() %}
                         <button
                           class="btn btn-outline-primary"
-                          onclick="confirmImport('cafe_da_manha')"
+                          onclick="confirmImport('{{ meal_type }}')"
                         >
-                          🥐 Café da Manhã
+                          {{ meal_name }}
                         </button>
-                        <button
-                          class="btn btn-outline-primary"
-                          onclick="confirmImport('lanche_manha')"
-                        >
-                          🍎 Lanche da Manhã
-                        </button>
-                        <button
-                          class="btn btn-outline-primary"
-                          onclick="confirmImport('almoco')"
-                        >
-                          🍽️ Almoço
-                        </button>
-                        <button
-                          class="btn btn-outline-primary"
-                          onclick="confirmImport('lanche_tarde')"
-                        >
-                          ☕ Lanche da Tarde
-                        </button>
-                        <button
-                          class="btn btn-outline-primary"
-                          onclick="confirmImport('janta')"
-                        >
-                          🍲 Jantar
-                        </button>
-                        <button
-                          class="btn btn-outline-primary"
-                          onclick="confirmImport('ceia')"
-                        >
-                          🌙 Ceia
-                        </button>
+                        {% endfor %}
                       </div>
                     </div>
                   </div>

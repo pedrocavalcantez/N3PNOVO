@@ -1,14 +1,7 @@
 // Dashboard JavaScript functionality
 
 // Constants
-const MEAL_TYPES = [
-  "cafe_da_manha",
-  "lanche_manha",
-  "almoco",
-  "lanche_tarde",
-  "janta",
-  "ceia",
-];
+// MEAL_TYPES is now defined in the dashboard.html template from server-side constants
 
 const NUTRIENT_TYPES = {
   calories: { label: "Calorias", unit: "" },
@@ -874,7 +867,7 @@ document.addEventListener("DOMContentLoaded", function () {
   }
 
   // Calculate totals from existing rows on page load
-  console.log("Calculating initial totals...");
+  //#console.log("Calculating initial totals...");
   MEAL_TYPES.forEach((mealType) => {
     console.log(`Calculating totals for ${mealType}...`);
     updateMealTotals(mealType);

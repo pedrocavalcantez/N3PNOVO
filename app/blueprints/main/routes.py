@@ -103,4 +103,4 @@ def dashboard():
 @bp.route("/calculator")
 @login_required
 def calculator():
-    return render_template("main/calculator.html")
+    return render_template("main/calculator.html", MEAL_TYPES=MEAL_TYPES)

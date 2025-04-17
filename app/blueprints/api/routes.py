@@ -6,6 +6,7 @@ from app.models import Diet, FoodData
 from datetime import datetime
 import pandas as pd
 from io import BytesIO
+from app.constants import MEAL_TYPES
 
 
 @bp.route("/search_food")
@@ -443,15 +444,8 @@ def export_diet():
 
         # Create an Excel writer object
         with pd.ExcelWriter(excel_file, engine="openpyxl") as writer:
-            # Dictionary for meal type translations
-            meal_names = {
-                "cafe_da_manha": "Café da Manhã",
-                "lanche_manha": "Lanche da Manhã",
-                "almoco": "Almoço",
-                "lanche_tarde": "Lanche da Tarde",
-                "janta": "Jantar",
-                "ceia": "Ceia",
-            }
+            # Use MEAL_TYPES from constants
+            meal_names = MEAL_TYPES
 
             # Create summary DataFrame
             summary_data = {
