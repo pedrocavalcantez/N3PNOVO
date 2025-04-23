@@ -15,28 +15,28 @@ with app.app_context():
     db.drop_all()
     # Create all tables
     db.create_all()
-    
+
     # Create admin user
     admin = User(
-        username='admin',
-        email='admin@admin.com',
-        nome='Administrador',
+        username="admin",
+        email="admin@admin.com",
+        nome="Administrador",
         idade=30,
         altura=170,
         peso=70,
-        sexo='M',
-        fator_atividade='moderado',
-        objetivo='manter',
+        sexo="M",
+        fator_atividade="moderado",
+        objetivo="manter",
         calories_goal=2000,
         proteins_goal=150,
         carbs_goal=250,
-        fats_goal=70
+        fats_goal=70,
     )
-    admin.set_password('123456')
-    
+    admin.set_password("123456")
+
     db.session.add(admin)
     db.session.commit()
-    
+
     print("Database tables created successfully!")
     print("Admin user created with credentials:")
     print("Username: admin")

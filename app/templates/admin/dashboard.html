@@ -1,0 +1,108 @@
+{% extends "base.html" %} {% block title %}Admin Dashboard{% endblock %} {%
+block content %}
+<div class="container mt-4">
+  <h1 class="mb-4">Admin Dashboard</h1>
+
+  <div class="row">
+    <!-- Meal Templates Card -->
+    <div class="col-md-4 mb-4">
+      <div class="card h-100">
+        <div class="card-body">
+          <h5 class="card-title">Meal Templates</h5>
+          <p class="card-text">
+            Manage meal templates for different meal types.
+          </p>
+          <a href="{{ url_for('main.meal_templates') }}" class="btn btn-primary"
+            >Manage Templates</a
+          >
+        </div>
+      </div>
+    </div>
+
+    <!-- Users Card -->
+    <div class="col-md-4 mb-4">
+      <div class="card h-100">
+        <div class="card-body">
+          <h5 class="card-title">User Management</h5>
+          <p class="card-text">
+            View and manage user accounts and permissions.
+          </p>
+          <a href="#" class="btn btn-primary">Manage Users</a>
+        </div>
+      </div>
+    </div>
+
+    <!-- System Settings Card -->
+    <div class="col-md-4 mb-4">
+      <div class="card h-100">
+        <div class="card-body">
+          <h5 class="card-title">System Settings</h5>
+          <p class="card-text">
+            Configure system-wide settings and preferences.
+          </p>
+          <a href="#" class="btn btn-primary">Settings</a>
+        </div>
+      </div>
+    </div>
+  </div>
+
+  <!-- Quick Stats Section -->
+  <div class="row mt-4">
+    <div class="col-12">
+      <div class="card">
+        <div class="card-header">
+          <h5 class="mb-0">Quick Stats</h5>
+        </div>
+        <div class="card-body">
+          <div class="row">
+            <div class="col-md-3">
+              <div class="stat-card">
+                <h6>Total Templates</h6>
+                <h3 id="total-templates">Loading...</h3>
+              </div>
+            </div>
+            <div class="col-md-3">
+              <div class="stat-card">
+                <h6>Active Users</h6>
+                <h3 id="active-users">Loading...</h3>
+              </div>
+            </div>
+            <div class="col-md-3">
+              <div class="stat-card">
+                <h6>Today's Logins</h6>
+                <h3 id="today-logins">Loading...</h3>
+              </div>
+            </div>
+            <div class="col-md-3">
+              <div class="stat-card">
+                <h6>System Status</h6>
+                <h3 class="text-success">Online</h3>
+              </div>
+            </div>
+          </div>
+        </div>
+      </div>
+    </div>
+  </div>
+</div>
+
+<style>
+  .stat-card {
+    text-align: center;
+    padding: 15px;
+    border-radius: 5px;
+    background-color: #f8f9fa;
+  }
+
+  .stat-card h6 {
+    color: #6c757d;
+    margin-bottom: 10px;
+  }
+
+  .stat-card h3 {
+    margin: 0;
+    font-weight: bold;
+  }
+</style>
+
+{% endblock %}
