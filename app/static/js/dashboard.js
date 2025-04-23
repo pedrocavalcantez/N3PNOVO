@@ -358,7 +358,7 @@ function collectMealsData() {
   Object.keys(MEAL_TYPES).forEach((mealType) => {
     mealsData[mealType] = Array.from(
       document.querySelectorAll(
-        "#${mealType}-foods tr:not(.table-secondary):not(.template-row)"
+        `#${mealType}-foods tr:not(.table-secondary):not(.template-row)`
       )
     )
       .filter((row) => {
@@ -1177,7 +1177,7 @@ async function addMealTemplate(mealType, templateId) {
       const foodData = await foodResponse.json();
 
       if (!foodData.success) {
-        showAlert(`Erro ao carregar alimento ${food.food_code}`, "danger");
+        //showAlert(`Erro ao carregar alimento ${food.food_code}`, "danger");
         continue;
       }
 
@@ -1227,7 +1227,7 @@ async function addMealTemplate(mealType, templateId) {
 
         section.appendChild(row);
       } else {
-        showAlert(`Erro ao adicionar ${food.food_code}`, "danger");
+        // showAlert(`Erro ao adicionar ${food.food_code}`, "danger");
       }
     }
 
@@ -1244,10 +1244,10 @@ async function addMealTemplate(mealType, templateId) {
       }
     }
 
-    showAlert("Refeição adicionada com sucesso!", "success");
+    // showAlert("Refeição adicionada com sucesso!", "success");
   } catch (error) {
     console.error("Error adding meal template:", error);
-    showAlert("Erro ao adicionar refeição", "danger");
+    // showAlert("Erro ao adicionar refeição", "danger");
   }
 }
 
@@ -1292,11 +1292,11 @@ async function populateMealTemplates(mealType) {
       });
     } catch (error) {
       console.error("Error loading meal templates:", error);
-      showAlert("Erro ao carregar templates de refeições", "danger");
+      // showAlert("Erro ao carregar templates de refeições", "danger");
     }
   } catch (error) {
     console.error("Error in populateMealTemplates:", error);
-    showAlert("Erro ao carregar templates de refeições", "danger");
+    // showAlert("Erro ao carregar templates de refeições", "danger");
   }
 }
 
