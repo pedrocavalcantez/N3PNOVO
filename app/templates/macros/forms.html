@@ -42,14 +42,14 @@ input_class='form-control', placeholder='') %}
     <div class="action-buttons">
       <button
         class="btn btn-primary btn-sm"
-        onclick="editFoodRow(this)"
+        onclick="Food.editFoodRow(this)"
         title="Editar"
       >
         <i class="fas fa-edit"></i>
       </button>
       <button
         class="btn btn-danger"
-        onclick="deleteFood({{ food.id }})"
+        onclick="Food.deleteFood(this)"
         title="Remover"
       >
         <i class="fas fa-trash"></i>

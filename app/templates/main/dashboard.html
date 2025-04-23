@@ -5,22 +5,22 @@
   const MEAL_TYPES = {{ meal_types|tojson }};
 </script>
 <div class="container mt-4">
-    <h1>Dashboard</h1>
-    
-    {% if diet %}
-    <div class="card mb-4">
-        <div class="card-header">
-            <h5 class="mb-0">Dieta Atual: {{ diet.name }}</h5>
-        </div>
-        <div class="card-body">
-            <p>Data de criação: {{ diet.created_at.strftime('%d/%m/%Y') }}</p>
-        </div>
+  <h1>Dashboard</h1>
+
+  {% if diet %}
+  <div class="card mb-4">
+    <div class="card-header">
+      <h5 class="mb-0">Dieta Atual: {{ diet.name }}</h5>
     </div>
-    {% else %}
-    <div class="alert alert-info">
-        Você ainda não tem nenhuma dieta cadastrada.
+    <div class="card-body">
+      <p>Data de criação: {{ diet.created_at.strftime('%d/%m/%Y') }}</p>
     </div>
-    {% endif %}
+  </div>
+  {% else %}
+  <div class="alert alert-info">
+    Você ainda não tem nenhuma dieta cadastrada.
+  </div>
+  {% endif %}
 
   <!-- Nutritional Summary -->
   <div class="row mb-4">
@@ -186,7 +186,7 @@
             </button>
             <button
               class="btn btn-primary btn-sm"
-              onclick="addNewRow('{{ meal_type }}')"
+              onclick="Food.createFoodRow(null, '{{ meal_type }}')"
             >
               <i class="fas fa-plus me-1"></i>Adicionar Alimento
             </button>
@@ -262,7 +262,7 @@
           type="text"
           class="form-control food-code"
           placeholder="Código do alimento"
-          onkeyup="searchFood(this)"
+          onkeyup="Food.searchFood(this)"
         />
         <div class="dropdown-menu food-search-results"></div>
       </div>
@@ -275,7 +275,7 @@
         step="1"
         min="0"
         style="width: 80px"
-        oninput="updateNutrition(this)"
+        oninput="Food.updateNutrition(this)"
       />
     </td>
     <td class="calories">0.0</td>
@@ -284,10 +284,19 @@
     <td class="fats">0.0</td>
     <td>
       <div class="action-buttons">
-        <button class="btn btn-success btn-sm save-food" style="display: none" title="Confirmar">
+        <button
+          class="btn btn-success btn-sm save-food"
+          style="display: none"
+          title="Confirmar"
+          onclick="Food.saveFood(this)"
+        >
           <i class="fas fa-check"></i>
         </button>
-        <button class="btn btn-danger btn-sm" onclick="removeRow(this)" title="Remover alimento">
+        <button
+          class="btn btn-danger btn-sm"
+          onclick="Food.deleteFood(this)"
+          title="Remover alimento"
+        >
           <i class="fas fa-trash"></i>
         </button>
       </div>
@@ -301,8 +310,14 @@
   <div class="modal-dialog">
     <div class="modal-content">
       <div class="modal-header">
-        <h5 class="modal-title">Adicionar Refeição Predefinida - {{ meal_name }}</h5>
-        <button type="button" class="btn-close" data-bs-dismiss="modal"></button>
+        <h5 class="modal-title">
+          Adicionar Refeição Predefinida - {{ meal_name }}
+        </h5>
+        <button
+          type="button"
+          class="btn-close"
+          data-bs-dismiss="modal"
+        ></button>
       </div>
       <div class="modal-body">
         <div class="list-group" id="meal-templates-{{ meal_type }}">
@@ -315,68 +330,68 @@
 {% endfor %}
 
 <script>
-function loadMealTemplates(mealType) {
-  var container = document.getElementById('meal-templates-' + mealType);
-  if (!container) return;
+  function loadMealTemplates(mealType) {
+    var container = document.getElementById('meal-templates-' + mealType);
+    if (!container) return;
 
-  var request = new XMLHttpRequest();
-  request.open('GET', '/api/meal_templates?meal_type=' + mealType, true);
-  
-  request.onload = function() {
-    if (request.status >= 200 && request.status < 400) {
-      var data = JSON.parse(request.responseText);
-      
-      if (!data.success) {
+    var request = new XMLHttpRequest();
+    request.open('GET', '/api/meal_templates?meal_type=' + mealType, true);
+
+    request.onload = function() {
+      if (request.status >= 200 && request.status < 400) {
+        var data = JSON.parse(request.responseText);
+
+        if (!data.success) {
+          showAlert('Erro ao carregar templates de refeições', 'danger');
+          return;
+        }
+
+        container.innerHTML = '';
+
+        data.templates.forEach(function(template) {
+          var foodNames = template.foods.map(function(food) {
+            return food.food_code;
+          }).join(', ');
+
+          var button = document.createElement('button');
+          button.type = 'button';
+          button.className = 'list-group-item list-group-item-action';
+          button.onclick = function() {
+            Food.addMealTemplate(mealType, template.id);
+          };
+
+          var itemText = template.foods.length > 1 ? ' items' : ' item';
+          button.innerHTML =
+            '<div class="d-flex justify-content-between align-items-center">' +
+              '<div>' +
+                '<h6 class="mb-1">' + template.name + '</h6>' +
+                '<small class="text-muted">' + foodNames + '</small>' +
+              '</div>' +
+              '<span class="badge bg-primary rounded-pill">' +
+                template.foods.length + itemText +
+              '</span>' +
+            '</div>';
+
+          container.appendChild(button);
+        });
+      } else {
         showAlert('Erro ao carregar templates de refeições', 'danger');
-        return;
       }
-      
-      container.innerHTML = '';
-      
-      data.templates.forEach(function(template) {
-        var foodNames = template.foods.map(function(food) { 
-          return food.food_code; 
-        }).join(', ');
-        
-        var button = document.createElement('button');
-        button.type = 'button';
-        button.className = 'list-group-item list-group-item-action';
-        button.onclick = function() {
-          addMealTemplate(mealType, template.id);
-        };
-        
-        var itemText = template.foods.length > 1 ? ' items' : ' item';
-        button.innerHTML = 
-          '<div class="d-flex justify-content-between align-items-center">' +
-            '<div>' +
-              '<h6 class="mb-1">' + template.name + '</h6>' +
-              '<small class="text-muted">' + foodNames + '</small>' +
-            '</div>' +
-            '<span class="badge bg-primary rounded-pill">' + 
-              template.foods.length + itemText +
-            '</span>' +
-          '</div>';
-        
-        container.appendChild(button);
-      });
-    } else {
-      showAlert('Erro ao carregar templates de refeições', 'danger');
-    }
-  };
-  
-  request.onerror = function() {
-    showAlert('Erro ao carregar templates de refeições', 'danger');
-  };
-  
-  request.send();
-}
+    };
 
-// Carregar templates quando o modal é aberto
-{% for meal_type in meal_types %}
-document.getElementById('mealTemplateModal-{{ meal_type }}').addEventListener('show.bs.modal', function() {
-  loadMealTemplates('{{ meal_type }}');
-});
-{% endfor %}
+    request.onerror = function() {
+      showAlert('Erro ao carregar templates de refeições', 'danger');
+    };
+
+    request.send();
+  }
+
+  // Carregar templates quando o modal é aberto
+  {% for meal_type in meal_types %}
+  document.getElementById('mealTemplateModal-{{ meal_type }}').addEventListener('show.bs.modal', function() {
+    loadMealTemplates('{{ meal_type }}');
+  });
+  {% endfor %}
 </script>
 
 <!-- Save Diet Modal -->
@@ -512,8 +527,12 @@ document.getElementById('mealTemplateModal-{{ meal_type }}').addEventListener('s
   href="{{ url_for('static', filename='css/calculator.css') }}"
 />
 {% endif %} {% endblock %} {% block extra_js %}
+<script src="{{ url_for('static', filename='js/helpers.js') }}"></script>
+<script src="{{ url_for('static', filename='js/api.js') }}"></script>
+<script src="{{ url_for('static', filename='js/Food.js') }}"></script>
+<script src="{{ url_for('static', filename='js/totals.js') }}"></script>
+<script src="{{ url_for('static', filename='js/diet.js') }}"></script>
 <script src="{{ url_for('static', filename='js/dashboard.js') }}"></script>
 {% if request.args.get('complement') == 'true' %}
 <script src="{{ url_for('static', filename='js/calculator.js') }}"></script>
-{% endif %}
-{% endblock %}
+{% endif %} {% endblock %}
