@@ -19,11 +19,17 @@ def search_food():
         return jsonify([])
 
     # First, search for elements that start with the query
-    foods_start = FoodData.query.filter(FoodData.code.ilike(f"{query}%")).limit(10).all()
-    
+    foods_start = (
+        FoodData.query.filter(FoodData.code.ilike(f"{query}%")).limit(10).all()
+    )
+
     # If less than 10 results, search for elements that contain the query
     if len(foods_start) < 10:
-        additional_foods = FoodData.query.filter(FoodData.code.ilike(f"%{query}%")).limit(10 - len(foods_start)).all()
+        additional_foods = (
+            FoodData.query.filter(FoodData.code.ilike(f"%{query}%"))
+            .limit(10 - len(foods_start))
+            .all()
+        )
         foods = foods_start + additional_foods
     else:
         foods = foods_start
@@ -567,57 +573,100 @@ def export_diet():
         return jsonify({"error": str(e)}), 500
 
 
-@bp.route('/diets', methods=['POST'])
+@bp.route("/diets", methods=["POST"])
 @login_required
 def create_diet():
     data = request.get_json()
     name = data.get("name")
-    
+
     if not name:
         return jsonify({"error": "Nome da dieta é obrigatório"}), 400
-    
+
     diet = Diet(name=name, user_id=current_user.id)
     db.session.add(diet)
     db.session.commit()
-    
-    return jsonify({
-        "success": True,
-        "name": diet.name
-    })
 
-@bp.route('/diets/<int:diet_id>', methods=['PUT'])
+    return jsonify({"success": True, "name": diet.name})
+
+
+@bp.route("/diets/<int:diet_id>", methods=["PUT"])
 @login_required
 def update_diet(diet_id):
     diet = Diet.query.get_or_404(diet_id)
     if diet.user_id != current_user.id:
         return jsonify({"error": "Não autorizado"}), 403
-    
+
     data = request.get_json()
     name = data.get("name")
-    
+
     if name:
         diet.name = name
         db.session.commit()
-    
-    return jsonify({
-        "success": True,
-        "name": diet.name
-    })
+
+    return jsonify({"success": True, "name": diet.name})
+
 
 @bp.route("/last_diet")
 @login_required
 def last_diet():
     """Retorna a dieta mais recente do usuário logado"""
     diet = (
-        Diet.query
-        .filter_by(user_id=current_user.id)
+        Diet.query.filter_by(user_id=current_user.id)
         .order_by(Diet.created_at.desc())
         .first()
     )
     if diet:
         return jsonify(
-            {"success": True, "id": diet.id, "name": diet.name,
-             "meals_data": diet.meals_data}
+            {
+                "success": True,
+                "id": diet.id,
+                "name": diet.name,
+                "meals_data": diet.meals_data,
+            }
         )
     # Nenhuma dieta salva ainda
     return jsonify({"success": False, "error": "Nenhuma dieta encontrada"})
+
+
+@bp.route("/chatbot", methods=["POST"])
+@login_required
+def chatbot():
+    from openai import OpenAI
+
+    data = request.get_json()
+    user_message = data.get("message")
+
+    if not user_message:
+        return jsonify({"error": "Mensagem não fornecida"}), 400
+
+    # Use dados do usuário
+    user = current_user
+    user_profile = {
+        "nome": user.nome,
+        "idade": user.idade,
+        "peso": user.peso,
+        "altura": user.altura,
+        "objetivo": user.get_objetivo_display(),
+        "atividade": user.get_fator_atividade_display(),
+    }
+
+    prompt = f"""
+    O usuário deseja orientação nutricional. Perfil:
+    - Nome: {user_profile["nome"]}
+    - Idade: {user_profile["idade"]}
+    - Peso: {user_profile["peso"]} kg
+    - Altura: {user_profile["altura"]} m
+    - Objetivo: {user_profile["objetivo"]}
+    - Nível de atividade: {user_profile["atividade"]}
+
+    Pergunta do usuário: "{user_message}"
+    """
+
+    # Chamada à API
+    response = openai.ChatCompletion.create(
+        model="gpt-4",
+        messages=[{"role": "user", "content": prompt}],
+        temperature=0.7,
+    )
+
+    return jsonify({"response": response["choices"][0]["message"]["content"]})

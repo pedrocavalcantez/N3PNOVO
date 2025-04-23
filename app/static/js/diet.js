@@ -23,8 +23,9 @@ function collectMealsData() {
         } else {
           const cells = row.cells;
           if (cells.length >= 6) {
-            const foodId = row.id?.replace("food-", "");
-            return foodId && foodId !== "";
+            const foodCode = cells[0].textContent.trim();
+            const quantity = cells[1].textContent.trim();
+            return foodCode && quantity;
           }
           return false;
         }
@@ -50,7 +51,6 @@ function collectMealsData() {
           const quantity = parseFloat(quantityText.replace("g", "")) || 0;
 
           return {
-            id: row.id?.replace("food-", ""),
             food_code: cells[0].textContent.trim(),
             quantity: quantity,
             calories: parseFloat(cells[2].textContent) || 0,
@@ -155,19 +155,54 @@ async function loadDiet(dietId) {
     const data = await makeDietApiCall(`/api/load_diet/${dietId}`);
     clearAllTables();
 
-    Object.entries(data.meals_data).forEach(([mealType, foods]) => {
-      const tbody = document.querySelector(`#${mealType}-foods`);
-      if (tbody) {
-        foods.forEach((food) => {
-          const row = Food.createFoodRow(food);
-          tbody.appendChild(row);
-          updateMealTotals(mealType);
-        });
+    // Garante que todas as seções estão visíveis no DOM
+    Object.keys(MEAL_TYPES).forEach((mealType) => {
+      const content = document.getElementById(`${mealType}-content`);
+      const btn = content.closest(".card").querySelector(".expand-btn i");
+      if (content.style.display === "none") {
+        content.style.display = "block";
+        btn.classList.remove("fa-chevron-down");
+        btn.classList.add("fa-chevron-up");
+        content.style.opacity = "1";
+        content.style.transform = "translateY(0)";
       }
     });
 
-    closeModal("loadDietModal");
+    // Adiciona os alimentos por refeição
+    Object.entries(data.meals_data).forEach(([mealType, foods]) => {
+      const tbody = document.querySelector(`#${mealType}-foods`);
+      if (!tbody) {
+        console.warn(`⚠️ Tbody não encontrado para ${mealType}`);
+        return;
+      }
+
+      foods.forEach((food, index) => {
+        try {
+          const row = new Food(food, mealType).setupRow(true); // modo de exibição (não editável)
+          const totalRow = tbody.querySelector(".table-secondary");
+          if (totalRow) {
+            tbody.insertBefore(row, totalRow);
+          } else {
+            tbody.appendChild(row);
+          }
+        } catch (err) {
+          console.error(
+            `❌ Erro ao renderizar alimento ${index} em ${mealType}:`,
+            food,
+            err
+          );
+        }
+      });
+
+      // Atualiza os totais da refeição após todos os alimentos
+      updateMealTotals(mealType);
+    });
+
+    // Atualiza totais do dia inteiro
     updateDailyTotals();
+
+    // Fecha o modal
+    closeModal("loadDietModal");
   } catch (error) {
     alert("Erro ao carregar dieta: " + error.message);
   }
@@ -192,10 +227,31 @@ async function deleteDiet(dietId) {
   }
 }
 
+function closeModal(modalId) {
+  const modal = document.getElementById(modalId);
+  if (modal) {
+    const modalInstance = bootstrap.Modal.getInstance(modal);
+    if (modalInstance) {
+      modalInstance.hide();
+    }
+  }
+}
+
+function clearAllTables() {
+  Object.keys(MEAL_TYPES).forEach((mealType) => {
+    const tbody = document.querySelector(`#${mealType}-foods`);
+    if (tbody) {
+      // Remove all rows except the totals row
+      const rows = tbody.querySelectorAll("tr:not(.table-secondary)");
+      rows.forEach((row) => row.remove());
+    }
+  });
+}
+
 window.Diet = {
   collectMealsData,
-  showDietSuggestions,
-  selectDietSuggestion,
+  showSuggestions: showDietSuggestions,
+  selectSuggestion: selectDietSuggestion,
   getDietInfo,
   saveDiet,
   loadDiet,

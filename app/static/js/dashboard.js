@@ -136,6 +136,7 @@ function initDashboard() {
   );
   Totals.updateDailyTotals();
 }
+
 async function exportToExcel() {
   try {
     // Collect all meal data
@@ -176,6 +177,53 @@ async function exportToExcel() {
   }
 }
 
+function loadMealTemplates(mealType) {
+  var container = document.getElementById("meal-templates-" + mealType);
+  if (!container) return;
+
+  var request = new XMLHttpRequest();
+  request.open("GET", "/api/meal_templates?meal_type=" + mealType, true);
+
+  request.onload = function () {
+    if (request.status >= 200 && request.status < 400) {
+      var data = JSON.parse(request.responseText);
+
+      if (!data.success) {
+        showAlert("Erro ao carregar templates de refeições", "danger");
+        return;
+      }
+
+      container.innerHTML = "";
+
+      data.templates.forEach(function (template) {
+        var foodNames = template.meals_data
+          .map(function (food) {
+            return food.food_code;
+          })
+          .join(", ");
+
+        var button = document.createElement("button");
+        button.type = "button";
+        button.className = "list-group-item list-group-item-action";
+        button.onclick = function () {
+          Food.addMealTemplate(mealType, template.id);
+        };
+        button.innerHTML = `
+          <div class="d-flex justify-content-between align-items-center">
+            <div>
+              <h6 class="mb-1">${template.name}</h6>
+              <small class="text-muted">${foodNames}</small>
+            </div>
+          </div>
+        `;
+        container.appendChild(button);
+      });
+    }
+  };
+
+  request.send();
+}
+
 document.addEventListener("DOMContentLoaded", initDashboard);
 
 window.Dashboard = {
@@ -184,4 +232,16 @@ window.Dashboard = {
   initializeDashboardEvents,
   initDashboard,
   exportToExcel,
+  loadMealTemplates,
 };
+
+async function sendChatbotMessage() {
+  const userMessage = document.getElementById("chatInput").value;
+  const response = await fetch("/api/chatbot", {
+    method: "POST",
+    headers: { "Content-Type": "application/json" },
+    body: JSON.stringify({ message: userMessage }),
+  });
+  const data = await response.json();
+  document.getElementById("chatOutput").textContent = data.response;
+}

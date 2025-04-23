@@ -4,8 +4,8 @@ from flask_login import login_required, current_user
 from app import db
 from app.blueprints.main import bp
 from app.models import Diet, FoodData
-from app.constants import MEAL_TYPES
-from app.models.meal_template import MealTemplate, MealTemplateFood
+from app.constants import MEAL_TYPES, MACRO_TYPES
+from app.models.meal_template import MealTemplate
 from app.decorators import admin_required
 
 
@@ -56,15 +56,11 @@ def dashboard():
     # Inicializa as refeições
     meals = []
 
-    # Inicializa os totais por refeição
-    meal_totals = {
-        "cafe_da_manha": {"calories": 0, "proteins": 0, "carbs": 0, "fats": 0},
-        "lanche_manha": {"calories": 0, "proteins": 0, "carbs": 0, "fats": 0},
-        "almoco": {"calories": 0, "proteins": 0, "carbs": 0, "fats": 0},
-        "lanche_tarde": {"calories": 0, "proteins": 0, "carbs": 0, "fats": 0},
-        "janta": {"calories": 0, "proteins": 0, "carbs": 0, "fats": 0},
-        "ceia": {"calories": 0, "proteins": 0, "carbs": 0, "fats": 0},
-    }
+    meal_totals = {}
+    for y in MEAL_TYPES.keys():
+        meal_totals[y] = {}
+        for x in MACRO_TYPES.keys():
+            meal_totals[y][x] = 0
 
     # Se houver uma dieta mais recente, carrega os dados das refeições
     if most_recent_diet and most_recent_diet.meals_data:
@@ -140,7 +136,9 @@ def get_meal_template(template_id):
 @login_required
 @admin_required
 def meal_templates():
-    return render_template("admin/meal_templates.html")
+    return render_template(
+        "admin/meal_templates.html", MEAL_TYPES=MEAL_TYPES, MACRO_TYPES=MACRO_TYPES
+    )
 
 
 @bp.route("/api/meal_templates", methods=["POST"])
@@ -153,19 +151,10 @@ def create_meal_template():
         template = MealTemplate(
             name=data["name"],
             description=data.get("description"),
-            meal_type=data.get("meal_type", "cafe_da_manha"),
+            meal_type=data.get("meal_type"),
+            meals_data=data.get("meals_data", []),
         )
         db.session.add(template)
-        db.session.flush()  # Para obter o ID do template
-
-        for food in data["foods"]:
-            template_food = MealTemplateFood(
-                template_id=template.id,
-                food_code=food["food_code"],
-                quantity=food["quantity"],
-            )
-            db.session.add(template_food)
-
         db.session.commit()
         return jsonify({"success": True, "template": template.to_dict()})
     except Exception as e:
@@ -184,18 +173,7 @@ def update_meal_template(template_id):
         template.name = data["name"]
         template.description = data.get("description")
         template.meal_type = data.get("meal_type", template.meal_type)
-
-        # Remover alimentos existentes
-        MealTemplateFood.query.filter_by(template_id=template.id).delete()
-
-        # Adicionar novos alimentos
-        for food in data["foods"]:
-            template_food = MealTemplateFood(
-                template_id=template.id,
-                food_code=food["food_code"],
-                quantity=food["quantity"],
-            )
-            db.session.add(template_food)
+        template.meals_data = data.get("meals_data", template.meals_data)
 
         db.session.commit()
         return jsonify({"success": True, "template": template.to_dict()})
@@ -223,4 +201,11 @@ def delete_meal_template(template_id):
 @login_required
 @admin_required
 def admin_dashboard():
-    return render_template("admin/dashboard.html")
+    return render_template("admin/admin.html")
+
+
+@bp.route("/api/constants")
+def get_constants():
+    return jsonify(
+        {"success": True, "meal_types": MEAL_TYPES, "macro_types": MACRO_TYPES}
+    )

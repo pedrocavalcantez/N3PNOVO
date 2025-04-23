@@ -39,30 +39,15 @@ def upgrade():
         sa.Column("id", sa.Integer(), nullable=False),
         sa.Column("name", sa.String(length=100), nullable=False),
         sa.Column("description", sa.Text(), nullable=True),
+        sa.Column("meal_type", sa.String(length=20), nullable=False),
+        sa.Column("meals_data", sa.JSON(), nullable=True),
         sa.Column("created_at", sa.DateTime(), nullable=False),
         sa.Column("updated_at", sa.DateTime(), nullable=False),
         sa.PrimaryKeyConstraint("id"),
         sa.UniqueConstraint("name"),
     )
 
-    # Create meal_template_items table
-    op.create_table(
-        "meal_template_items",
-        sa.Column("id", sa.Integer(), nullable=False),
-        sa.Column("template_id", sa.Integer(), nullable=False),
-        sa.Column("food_code", sa.String(length=10), nullable=False),
-        sa.Column("quantity", sa.Float(), nullable=False),
-        sa.Column("created_at", sa.DateTime(), nullable=False),
-        sa.Column("updated_at", sa.DateTime(), nullable=False),
-        sa.ForeignKeyConstraint(
-            ["template_id"],
-            ["meal_templates.id"],
-        ),
-        sa.PrimaryKeyConstraint("id"),
-    )
-
 
 def downgrade():
-    op.drop_table("meal_template_items")
     op.drop_table("meal_templates")
     op.drop_table("users")

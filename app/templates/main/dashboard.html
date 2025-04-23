@@ -3,6 +3,12 @@
 <script>
   // Constants from server
   const MEAL_TYPES = {{ meal_types|tojson }};
+  const NUTRIENT_TYPES = {
+    calories: { label: 'Calorias', unit: 'kcal' },
+    proteins: { label: 'Proteínas', unit: 'g' },
+    carbs: { label: 'Carboidratos', unit: 'g' },
+    fats: { label: 'Gorduras', unit: 'g' }
+  };
 </script>
 <div class="container mt-4">
   <h1>Dashboard</h1>
@@ -530,8 +536,8 @@
 <script src="{{ url_for('static', filename='js/helpers.js') }}"></script>
 <script src="{{ url_for('static', filename='js/api.js') }}"></script>
 <script src="{{ url_for('static', filename='js/Food.js') }}"></script>
-<script src="{{ url_for('static', filename='js/totals.js') }}"></script>
 <script src="{{ url_for('static', filename='js/diet.js') }}"></script>
+<script src="{{ url_for('static', filename='js/totals.js') }}"></script>
 <script src="{{ url_for('static', filename='js/dashboard.js') }}"></script>
 {% if request.args.get('complement') == 'true' %}
 <script src="{{ url_for('static', filename='js/calculator.js') }}"></script>

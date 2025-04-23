@@ -34,61 +34,64 @@ class Food {
       const response = await fetch(`/api/meal_templates/${templateId}`);
       const data = await response.json();
 
-      if (!data.success) throw new Error("Erro ao carregar template");
-
-      for (const food of data.template.foods) {
-        const foodResponse = await fetch(
-          `/api/food_nutrition/${food.food_code}`
-        );
-        const foodData = await foodResponse.json();
-
-        if (!foodData.success) continue;
-
-        const foodObj = {
-          food_code: food.food_code,
-          quantity: food.quantity,
-          meal_type: mealType,
-          nutrition: {
-            calories: (foodData.calories * food.quantity) / foodData.quantity,
-            proteins: (foodData.proteins * food.quantity) / foodData.quantity,
-            carbs: (foodData.carbs * food.quantity) / foodData.quantity,
-            fats: (foodData.fats * food.quantity) / foodData.quantity,
-          },
-        };
-
-        const response2 = await fetch("/api/add_food", {
-          method: "POST",
-          headers: { "Content-Type": "application/json" },
-          body: JSON.stringify(foodObj),
-        });
-
-        const result = await response2.json();
-        if (result.success) {
-          const section = document.getElementById(`${mealType}-foods`);
-          const row = Food.setupFoodRow(
-            {
-              id: result.food.id,
-              food_code: food.food_code,
-              quantity: food.quantity,
-              calories: foodObj.nutrition.calories,
-              proteins: foodObj.nutrition.proteins,
-              carbs: foodObj.nutrition.carbs,
-              fats: foodObj.nutrition.fats,
-            },
-            mealType,
-            true
-          );
-          section.appendChild(row);
-        }
+      if (!data.success) {
+        throw new Error(data.error || "Erro ao carregar template");
       }
 
-      updateMealTotals(mealType);
+      const tbody = document.querySelector(`#${mealType}-foods`);
+      if (!tbody) {
+        throw new Error("Tabela de alimentos não encontrada");
+      }
+
+      // Clear existing foods for this meal type
+      tbody.innerHTML = "";
+
+      // Add each food from the template
+      for (const food of data.template.meals_data) {
+        // Fetch nutritional information for the food
+        const nutritionResponse = await fetch(
+          `/api/food_nutrition/${food.food_code}`
+        );
+        const nutritionData = await nutritionResponse.json();
+
+        if (!nutritionData.success) {
+          console.error(
+            `Erro ao buscar informações nutricionais para ${food.food_code}`
+          );
+          continue;
+        }
+
+        // Calculate nutritional values based on quantity
+        const quantity = parseFloat(food.quantity);
+        const foodWithNutrition = {
+          ...food,
+          calories:
+            (nutritionData.calories * quantity) / nutritionData.quantity,
+          proteins:
+            (nutritionData.proteins * quantity) / nutritionData.quantity,
+          carbs: (nutritionData.carbs * quantity) / nutritionData.quantity,
+          fats: (nutritionData.fats * quantity) / nutritionData.quantity,
+        };
+
+        const row = Food.setupFoodRow(foodWithNutrition, mealType, true);
+        tbody.appendChild(row);
+      }
+
+      // Update totals
+      Food.updateTotalsFor(mealType);
       updateDailyTotals();
 
-      const modal = document.getElementById(`mealTemplateModal-${mealType}`);
-      if (modal) bootstrap.Modal.getInstance(modal)?.hide();
+      // Close the modal
+      const modal = document.querySelector(`#mealTemplateModal-${mealType}`);
+      if (modal) {
+        const bsModal = bootstrap.Modal.getInstance(modal);
+        if (bsModal) {
+          bsModal.hide();
+        }
+      }
     } catch (error) {
       console.error("Erro ao adicionar template:", error);
+      alert("Erro ao adicionar template: " + error.message);
     }
   }
   static setupFoodRow(food = null, mealType = null, isFromTemplate = false) {
@@ -148,7 +151,7 @@ class Food {
       const food = new Food(data.food, mealType);
       const newRow = food.setupRow(true);
       row.replaceWith(newRow);
-      Food.updateTotalsFor(newRow);
+      Food.updateTotalsFor(mealType);
     } catch (error) {
       Food.logError(error, "Erro ao salvar alimento");
       button.style.display = "inline-block";
@@ -384,6 +387,13 @@ class Food {
     const wrapper = document.createElement("tbody");
     wrapper.innerHTML = this.createRowTemplate(!isFromTemplate);
     const row = wrapper.firstElementChild;
+
+    if (!row) {
+      throw new Error(
+        "❌ Erro ao renderizar linha do alimento. Verifique os dados fornecidos."
+      );
+    }
+
     if (!isFromTemplate) {
       row
         .querySelector(".food-code")
@@ -392,9 +402,9 @@ class Food {
         .querySelector(".quantity")
         ?.addEventListener("input", (e) => Food.updateNutrition(e.target));
     }
+
     return row;
   }
-
   // === Utilitários de valor ===
   setNutritionalValues(row, values) {
     this.calories = parseFloat(values.calories) || 0;

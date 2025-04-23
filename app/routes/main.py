@@ -11,7 +11,7 @@ bp = Blueprint("main", __name__)
 @login_required
 @admin_required
 def admin_dashboard():
-    return render_template("admin/dashboard.html")
+    return render_template("admin/admin.html")
 
 
 @bp.route("/api/meal_templates")
@@ -51,7 +51,7 @@ def create_meal_template():
         template = MealTemplate(
             name=data["name"],
             description=data.get("description"),
-            meal_type=data.get("meal_type", "cafe_da_manha"),
+            meal_type=data.get("meal_type"),
         )
         db.session.add(template)
         db.session.flush()  # Para obter o ID do template

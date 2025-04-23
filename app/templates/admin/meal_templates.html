@@ -1,103 +1,153 @@
-{% extends "base.html" %}
-
-{% block title %}Gerenciar Templates de Refeições{% endblock %}
-
-{% block content %}
+{% extends "base.html" %} {% block title %}Gerenciar Templates de Refeições{%
+endblock %} {% block content %}
 <div class="container">
-    <div class="row mb-4">
-        <div class="col-md-12">
-            <div class="d-flex justify-content-between align-items-center">
-                <h2>Gerenciar Templates de Refeições</h2>
-                <button class="btn btn-primary" data-bs-toggle="modal" data-bs-target="#addTemplateModal">
-                    <i class="fas fa-plus me-1"></i>Novo Template
-                </button>
-            </div>
-        </div>
+  <div class="row mb-4">
+    <div class="col-md-12">
+      <div class="d-flex justify-content-between align-items-center">
+        <h2>Gerenciar Templates de Refeições</h2>
+        <button
+          class="btn btn-primary"
+          data-bs-toggle="modal"
+          data-bs-target="#addTemplateModal"
+        >
+          <i class="fas fa-plus me-1"></i>Novo Template
+        </button>
+      </div>
     </div>
+  </div>
 
-    <div class="row">
-        <div class="col-md-12">
-            <div class="card">
-                <div class="card-body">
-                    <div class="table-responsive">
-                        <table class="table table-hover">
-                            <thead>
-                                <tr>
-                                    <th>Nome</th>
-                                    <th>Descrição</th>
-                                    <th>Alimentos</th>
-                                    <th>Ações</th>
-                                </tr>
-                            </thead>
-                            <tbody id="templatesTable">
-                                <!-- Templates will be populated by JavaScript -->
-                            </tbody>
-                        </table>
-                    </div>
-                </div>
-            </div>
+  <div class="row">
+    <div class="col-md-12">
+      <div class="card">
+        <div class="card-body">
+          <div class="table-responsive">
+            <table class="table table-hover">
+              <thead>
+                <tr>
+                  <th>Nome</th>
+                  <th>Descrição</th>
+                  <th>Alimentos</th>
+                  <th>Ações</th>
+                </tr>
+              </thead>
+              <tbody id="templatesTable">
+                <!-- Templates will be populated by JavaScript -->
+              </tbody>
+            </table>
+          </div>
         </div>
+      </div>
     </div>
+  </div>
 </div>
 
 <!-- Modal para adicionar/editar template -->
 <div class="modal fade" id="addTemplateModal" tabindex="-1">
-    <div class="modal-dialog modal-lg">
-        <div class="modal-content">
-            <div class="modal-header">
-                <h5 class="modal-title">Adicionar Template</h5>
-                <button type="button" class="btn-close" data-bs-dismiss="modal"></button>
+  <div class="modal-dialog modal-lg">
+    <div class="modal-content">
+      <div class="modal-header">
+        <h5 class="modal-title">Adicionar Template</h5>
+        <button
+          type="button"
+          class="btn-close"
+          data-bs-dismiss="modal"
+        ></button>
+      </div>
+      <div class="modal-body">
+        <form id="templateForm">
+          <input type="hidden" id="templateId" />
+          <div class="mb-3">
+            <label for="templateName" class="form-label"
+              >Nome do Template</label
+            >
+            <input
+              type="text"
+              class="form-control"
+              id="templateName"
+              required
+            />
+          </div>
+          <div class="mb-3">
+            <label for="templateDescription" class="form-label"
+              >Descrição</label
+            >
+            <textarea
+              class="form-control"
+              id="templateDescription"
+              rows="2"
+            ></textarea>
+          </div>
+          <div class="mb-3">
+            <label for="mealType" class="form-label">Tipo de Refeição</label>
+            <select class="form-control" id="mealType" required>
+              {% for value, label in MEAL_TYPES.items() %}
+              <option value="{{ value }}">{{ label }}</option>
+              {% endfor %}
+            </select>
+          </div>
+          <div class="mb-3">
+            <label class="form-label">Alimentos</label>
+            <div id="foodsContainer">
+              <!-- Food items will be added here -->
             </div>
-            <div class="modal-body">
-                <form id="templateForm">
-                    <input type="hidden" id="templateId">
-                    <div class="mb-3">
-                        <label for="templateName" class="form-label">Nome do Template</label>
-                        <input type="text" class="form-control" id="templateName" required>
-                    </div>
-                    <div class="mb-3">
-                        <label for="templateDescription" class="form-label">Descrição</label>
-                        <textarea class="form-control" id="templateDescription" rows="2"></textarea>
-                    </div>
-                    <div class="mb-3">
-                        <label class="form-label">Alimentos</label>
-                        <div id="foodsContainer">
-                            <!-- Food items will be added here -->
-                        </div>
-                        <button type="button" class="btn btn-secondary mt-2" onclick="addFoodRow()">
-                            <i class="fas fa-plus me-1"></i>Adicionar Alimento
-                        </button>
-                    </div>
-                </form>
-            </div>
-            <div class="modal-footer">
-                <button type="button" class="btn btn-secondary" data-bs-dismiss="modal">Cancelar</button>
-                <button type="button" class="btn btn-primary" onclick="saveTemplate()">Salvar</button>
-            </div>
-        </div>
+            <button
+              type="button"
+              class="btn btn-secondary mt-2"
+              onclick="addFoodRow()"
+            >
+              <i class="fas fa-plus me-1"></i>Adicionar Alimento
+            </button>
+          </div>
+        </form>
+      </div>
+      <div class="modal-footer">
+        <button type="button" class="btn btn-secondary" data-bs-dismiss="modal">
+          Cancelar
+        </button>
+        <button type="button" class="btn btn-primary" onclick="saveTemplate()">
+          Salvar
+        </button>
+      </div>
     </div>
+  </div>
 </div>
 
 <!-- Template para linha de alimento -->
 <template id="foodRowTemplate">
-    <div class="food-row mb-2">
-        <div class="row">
-            <div class="col-md-5">
-                <input type="text" class="form-control food-code" placeholder="Código do alimento" required>
-            </div>
-            <div class="col-md-4">
-                <input type="number" class="form-control quantity" placeholder="Quantidade (g)" min="0" step="1" required>
-            </div>
-            <div class="col-md-3">
-                <button type="button" class="btn btn-danger" onclick="removeFoodRow(this)">
-                    <i class="fas fa-trash"></i>
-                </button>
-            </div>
-        </div>
+  <div class="food-row mb-2">
+    <div class="row">
+      <div class="col-md-5">
+        <input
+          type="text"
+          class="form-control food-code"
+          placeholder="Código do alimento"
+          required
+        />
+      </div>
+      <div class="col-md-4">
+        <input
+          type="number"
+          class="form-control quantity"
+          placeholder="Quantidade (g)"
+          min="0"
+          step="1"
+          required
+        />
+      </div>
+      <div class="col-md-3">
+        <button
+          type="button"
+          class="btn btn-danger"
+          onclick="removeFoodRow(this)"
+        >
+          <i class="fas fa-trash"></i>
+        </button>
+      </div>
     </div>
+  </div>
 </template>
-{% endblock %}
-
-{% block extra_js %}
+{% endblock %} {% block extra_js %}
+<script src="{{ url_for('static', filename='js/api.js') }}"></script>
+<script src="{{ url_for('static', filename='js/Food.js') }}"></script>
 <script src="{{ url_for('static', filename='js/meal_templates.js') }}"></script>
-{% endblock %} 
+{% endblock %}

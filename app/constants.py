@@ -11,6 +11,13 @@ MEAL_TYPES = {
     "ceia": "Ceia",
 }
 
+MACRO_TYPES = {
+    "calories": "Calorias",
+    "proteins": "Proteínas",
+    "carbs": "Carboidratos",
+    "fats": "Gorduras",
+}
+
 ACTIVITY_FACTORS = {
     "sedentario": 1.2,
     "leve": 1.375,

@@ -29,6 +29,7 @@ with app.app_context():
         objetivo="manter",
         calories_goal=2000,
         proteins_goal=150,
+        is_admin=True,
         carbs_goal=250,
         fats_goal=70,
     )
