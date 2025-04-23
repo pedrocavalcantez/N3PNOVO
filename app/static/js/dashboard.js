@@ -1,497 +1,1311 @@
-// ------------------------------------------------------------
-// dashboard.js — refatorado (v3‑corrigido)
-// ------------------------------------------------------------
-// 1. Carrega automaticamente a última dieta salva do usuário
-//    (endpoint /api/last_diet) ao abrir o dashboard.
-// 2. searchFood(): mantém o dropdown global criado no v2.
-// 3. Correção dos TypeError/ReferenceError — bind seguro
-//    + exportação correta das funções globais.
-// ------------------------------------------------------------
+// Dashboard JavaScript functionality
+
+// Constants
+// MEAL_TYPES is now defined in the dashboard.html template from server-side constants
 
 const NUTRIENT_TYPES = {
-  calories: { label: 'Calorias',     unit: ''  },
-  proteins: { label: 'Proteínas',    unit: 'g' },
-  carbs:    { label: 'Carboidratos', unit: 'g' },
-  fats:     { label: 'Gorduras',     unit: 'g' }
+  calories: { label: "Calorias", unit: "" },
+  proteins: { label: "Proteínas", unit: "g" },
+  carbs: { label: "Carboidratos", unit: "g" },
+  fats: { label: "Gorduras", unit: "g" },
 };
 
-function isGuestMode () { return !document.querySelector('.progress-wrapper'); }
-
-async function makeDietApiCall (url, opt = {}) {
-  const r = await fetch(url, opt);
-  const d = await r.json();
-  if (!r.ok) throw new Error(d.error || `HTTP ${r.status}`);
-  if (!url.includes('/api/search_food') && d.success === false)
-    throw new Error(d.error || 'Unknown error');
-  return d;
+// Mode Detection
+function isGuestMode() {
+  return !document.querySelector(".progress-wrapper");
 }
 
-function handleApiError (e, msg) { console.error(e); alert(`${msg}: ${e.message}`); }
-function closeModal (id)         { const m = bootstrap.Modal.getInstance(document.getElementById(id)); if (m) m.hide(); }
+// API Helpers
+async function makeDietApiCall(url, options = {}) {
+  try {
+    const response = await fetch(url, options);
+    const data = await response.json();
 
-function updateNutrientBoxes (totals) {
-  document.querySelectorAll('.nutrient-box').forEach(box => {
-    const p = box.querySelector('p');
-    if (!p) return;
-    for (const [key, i] of Object.entries(NUTRIENT_TYPES)) {
-      if (box.textContent.includes(i.label)) {
-        p.textContent = `${totals[key].toFixed(1)}${i.unit}`;
+    // Handle non-200 responses
+
+    // Handle search endpoints differently as they return arrays
+    if (url.includes("/api/search_food")) {
+      return data;
+    }
+
+    // For other endpoints, check success property
+    if (data.success === false) {
+      throw new Error(data.error || "Unknown error occurred");
+    }
+
+    return data;
+  } catch (error) {
+    console.error("API Call Error:", error);
+    throw error;
+  }
+}
+
+function handleApiError(error, customMessage) {
+  console.error("Error:", error);
+  alert(customMessage + ": " + error.message);
+}
+
+// UI Helpers
+function closeModal(modalId) {
+  const modal = bootstrap.Modal.getInstance(document.getElementById(modalId));
+  if (modal) {
+    modal.hide();
+  }
+}
+
+// Row Management Helpers
+function getFoodRowData(row) {
+  return {
+    food_code: row.querySelector(".food-code").value,
+    quantity: row.querySelector(".quantity").value,
+    calories: row.querySelector(".calories").textContent,
+    proteins: row.querySelector(".proteins").textContent,
+    carbs: row.querySelector(".carbs").textContent,
+    fats: row.querySelector(".fats").textContent,
+  };
+}
+
+function clearAllTables() {
+  document.querySelectorAll('tbody[id$="-foods"]').forEach((tbody) => {
+    tbody.innerHTML = "";
+  });
+}
+
+// Nutritional Value Helpers
+function getNutritionalValues(row) {
+  return {
+    calories: parseFloat(row.querySelector(".calories").textContent) || 0,
+    proteins: parseFloat(row.querySelector(".proteins").textContent) || 0,
+    carbs: parseFloat(row.querySelector(".carbs").textContent) || 0,
+    fats: parseFloat(row.querySelector(".fats").textContent) || 0,
+  };
+}
+
+function setNutritionalValues(row, values, includeUnits = false) {
+  if (!row) {
+    console.warn("Attempted to set nutritional values on null/undefined row");
+    return;
+  }
+
+  // Skip if this is a header row
+  if (row.closest("thead")) {
+    return;
+  }
+
+  // Check if this is a total row (has strong tags)
+  const isTotal = row.querySelector("strong") !== null;
+
+  let elements;
+  if (isTotal) {
+    // For total rows, look for strong tags in cells
+    const cells = Array.from(row.cells);
+    elements = {
+      calories: cells[2]?.querySelector("strong"),
+      proteins: cells[3]?.querySelector("strong"),
+      carbs: cells[4]?.querySelector("strong"),
+      fats: cells[5]?.querySelector("strong"),
+    };
+  } else {
+    // For regular rows, look for class names
+    elements = {
+      calories: row.querySelector(".calories"),
+      proteins: row.querySelector(".proteins"),
+      carbs: row.querySelector(".carbs"),
+      fats: row.querySelector(".fats"),
+    };
+  }
+
+  // Check if all required elements exist
+  const missingElements = Object.entries(elements)
+    .filter(([_, element]) => !element)
+    .map(([name]) => name);
+
+  if (missingElements.length > 0) {
+    console.warn(
+      "Missing nutritional elements in " +
+        (isTotal ? "total" : "") +
+        " row (" +
+        (row.id || "no id") +
+        "):",
+      missingElements.join(", "),
+      "\nRow HTML:",
+      row.innerHTML
+    );
+    return;
+  }
+
+  // Validate values
+  const validValues = {
+    calories: parseFloat(values.calories) || 0,
+    proteins: parseFloat(values.proteins) || 0,
+    carbs: parseFloat(values.carbs) || 0,
+    fats: parseFloat(values.fats) || 0,
+  };
+
+  // Set the values with proper formatting
+  elements.calories.textContent =
+    validValues.calories.toFixed(1) + (includeUnits ? "" : "");
+  elements.proteins.textContent =
+    validValues.proteins.toFixed(1) + (includeUnits ? "g" : "");
+  elements.carbs.textContent =
+    validValues.carbs.toFixed(1) + (includeUnits ? "g" : "");
+  elements.fats.textContent =
+    validValues.fats.toFixed(1) + (includeUnits ? "g" : "");
+}
+
+function resetNutritionalValues(row) {
+  setNutritionalValues(row, {
+    calories: 0,
+    proteins: 0,
+    carbs: 0,
+    fats: 0,
+  });
+}
+
+// Update Totals Helpers
+function updateTotalsDisplay(totals) {
+  if (isGuestMode()) {
+    // Guest mode - update the simple summary boxes
+    document.getElementById("total-calories").textContent =
+      totals.calories.toFixed(1);
+    document.getElementById("total-proteins").textContent =
+      totals.proteins.toFixed(1);
+    document.getElementById("total-carbs").textContent =
+      totals.carbs.toFixed(1);
+    document.getElementById("total-fats").textContent = totals.fats.toFixed(1);
+  } else {
+    // Regular mode - update the nutrient boxes and progress bar
+    updateNutrientBoxes(totals);
+    updateProgressBar(totals.calories);
+  }
+}
+
+// Helper function to create and setup a food row
+function setupFoodRow(food = null, mealType = null, isFromTemplate = false) {
+  // Clone the template
+  const template = document.getElementById("food-row-template");
+  const row = template.content.cloneNode(true).querySelector("tr");
+
+  // Set row ID if food exists
+  if (food && food.id) {
+    row.id = "food-" + food.id;
+  }
+
+  // Get elements
+  const foodCodeInput = row.querySelector(".food-code");
+  const quantityInput = row.querySelector(".quantity");
+  const caloriesCell = row.querySelector(".calories");
+  const proteinsCell = row.querySelector(".proteins");
+  const carbsCell = row.querySelector(".carbs");
+  const fatsCell = row.querySelector(".fats");
+  const actionButtons = row.querySelector(".action-buttons");
+
+  // Set values if food data exists
+  if (food) {
+    if (isFromTemplate || food.id) {
+      // For template foods or existing foods, create static cells
+      row.innerHTML = `
+        <tr>
+          <td>${food.food_code}</td>
+          <td>${food.quantity.toFixed(1)}g</td>
+          <td class="calories">${food.calories.toFixed(1)}</td>
+          <td class="proteins">${food.proteins.toFixed(1)}g</td>
+          <td class="carbs">${food.carbs.toFixed(1)}g</td>
+          <td class="fats">${food.fats.toFixed(1)}g</td>
+          <td>
+            <div class="action-buttons">
+              <button class="btn btn-primary btn-sm" onclick="editFoodRow(this)" title="Editar">
+                <i class="fas fa-edit"></i>
+              </button>
+              <button class="btn btn-danger btn-sm" onclick="deleteFood(${
+                food.id
+              })" title="Remover">
+                <i class="fas fa-trash"></i>
+              </button>
+            </div>
+          </td>
+        </tr>
+      `;
+    } else {
+      // For new foods being added manually
+      foodCodeInput.value = food.food_code || "";
+      quantityInput.value = food.quantity || "";
+      caloriesCell.textContent = food.calories?.toFixed(1) || "0.0";
+      proteinsCell.textContent = food.proteins?.toFixed(1) || "0.0";
+      carbsCell.textContent = food.carbs?.toFixed(1) || "0.0";
+      fatsCell.textContent = food.fats?.toFixed(1) || "0.0";
+
+      // Setup event listeners for manual entry
+      foodCodeInput.addEventListener("input", () => searchFood(foodCodeInput));
+      quantityInput.addEventListener("input", () =>
+        updateNutrition(quantityInput)
+      );
+
+      // Setup save button
+      const saveButton = row.querySelector(".save-food");
+      if (saveButton) {
+        saveButton.onclick = () => saveFood(saveButton, mealType);
+      }
+    }
+  } else {
+    // For completely new rows
+    foodCodeInput.addEventListener("input", () => searchFood(foodCodeInput));
+    quantityInput.addEventListener("input", () =>
+      updateNutrition(quantityInput)
+    );
+
+    // Setup save button for new rows
+    const saveButton = row.querySelector(".save-food");
+    if (saveButton) {
+      saveButton.onclick = () => saveFood(saveButton, mealType);
+    }
+  }
+
+  return row;
+}
+
+// Function to convert row back to editable form
+function editFoodRow(button) {
+  const row = button.closest("tr");
+  const cells = row.cells;
+
+  // Extrai os valores originais
+  const foodCode = cells[0].textContent.trim();
+  const quantity = parseFloat(cells[1].textContent);
+  const calories = parseFloat(cells[2].textContent);
+  const proteins = parseFloat(cells[3].textContent);
+  const carbs = parseFloat(cells[4].textContent);
+  const fats = parseFloat(cells[5].textContent);
+
+  // Transforma em campos editáveis
+  cells[0].innerHTML = `
+    <div class="input-group">
+      <input type="text" class="form-control food-code" value="${foodCode}" onkeyup="searchFood(this)">
+      <div class="search-results d-none position-absolute w-100 bg-white border rounded-bottom shadow-sm" style="z-index: 1000; top: 100%"></div>
+    </div>
+  `;
+  cells[1].innerHTML = `
+    <input type="number" class="form-control quantity" value="${quantity}" step="1" min="0" style="width: 80px" oninput="updateNutrition(this)">
+  `;
+
+  // Coloca spans vazios com classes corretas para serem atualizados
+  cells[2].innerHTML = `<span class="calories">${calories.toFixed(1)}</span>`;
+  cells[3].innerHTML = `<span class="proteins">${proteins.toFixed(1)}g</span>`;
+  cells[4].innerHTML = `<span class="carbs">${carbs.toFixed(1)}g</span>`;
+  cells[5].innerHTML = `<span class="fats">${fats.toFixed(1)}g</span>`;
+
+  // Botões de ação
+  const actionButtons = cells[6].querySelector(".action-buttons");
+  const foodId = row.id.replace("food-", "");
+  actionButtons.innerHTML = `
+    <button class="btn btn-success save-food" onclick="saveFood(this, '${getMealType(
+      row
+    )}')" title="Salvar">
+      <i class="fas fa-check"></i>
+    </button>
+    <button class="btn btn-danger" onclick="deleteFood(${foodId})" title="Remover">
+      <i class="fas fa-trash"></i>
+    </button>
+  `;
+}
+// Helper function to get meal type from row
+function getMealType(row) {
+  const tbody = row.closest("tbody");
+  return tbody.id.replace("-foods", "");
+}
+
+// Update createFoodRow to include edit button
+function createFoodRow(food) {
+  if (!food || !food.id) {
+    // For new rows, use the existing setup with input fields
+    return setupFoodRow(food);
+  }
+
+  // For loaded foods, create a static row
+  const row = document.createElement("tr");
+  row.id = "food-" + food.id;
+
+  // Create cells with static text
+  row.innerHTML = `
+    <tr>
+      <td>${food.food_code}</td>
+      <td>${parseFloat(food.quantity).toFixed(1)}g</td>
+      <td class="calories">${parseFloat(food.calories).toFixed(1)}</td>
+      <td class="proteins">${parseFloat(food.proteins).toFixed(1)}g</td>
+      <td class="carbs">${parseFloat(food.carbs).toFixed(1)}g</td>
+      <td class="fats">${parseFloat(food.fats).toFixed(1)}g</td>
+      <td>
+        <div class="action-buttons">
+          <button class="btn btn-primary btn-sm" onclick="editFoodRow(this)" title="Editar">
+            <i class="fas fa-edit"></i>
+          </button>
+          <button class="btn btn-danger" onclick="deleteFood(${
+            food.id
+          })" title="Remover">
+            <i class="fas fa-trash"></i>
+          </button>
+        </div>
+      </td>
+    </tr>
+  `;
+
+  return row;
+}
+
+function collectMealsData() {
+  const mealsData = {};
+
+  Object.keys(MEAL_TYPES).forEach((mealType) => {
+    mealsData[mealType] = Array.from(
+      document.querySelectorAll(
+        "#${mealType}-foods tr:not(.table-secondary):not(.template-row)"
+      )
+    )
+      .filter((row) => {
+        // Skip rows that are being edited (have input fields but no values)
+        const foodCodeInput = row.querySelector(".food-code");
+        const quantityInput = row.querySelector(".quantity");
+
+        if (foodCodeInput && quantityInput) {
+          // This is a new row being edited
+          return (
+            foodCodeInput.value &&
+            foodCodeInput.value.trim() !== "" &&
+            quantityInput.value &&
+            quantityInput.value.trim() !== ""
+          );
+        } else {
+          // This is an existing saved food row
+          const cells = row.cells;
+          if (cells.length >= 6) {
+            const foodId = row.id?.replace("food-", "");
+            return foodId && foodId !== "";
+          }
+          return false;
+        }
+      })
+      .map((row) => {
+        const foodCodeInput = row.querySelector(".food-code");
+        const quantityInput = row.querySelector(".quantity");
+
+        if (foodCodeInput && quantityInput) {
+          // New row being edited
+          return {
+            food_code: foodCodeInput.value,
+            quantity: quantityInput.value,
+            calories:
+              parseFloat(row.querySelector(".calories").textContent) || 0,
+            proteins:
+              parseFloat(row.querySelector(".proteins").textContent) || 0,
+            carbs: parseFloat(row.querySelector(".carbs").textContent) || 0,
+            fats: parseFloat(row.querySelector(".fats").textContent) || 0,
+          };
+        } else {
+          // Existing saved food row
+          const cells = row.cells;
+          // Extract quantity value, removing the 'g' suffix if present
+          const quantityText = cells[1].textContent.trim();
+          const quantity = parseFloat(quantityText.replace("g", "")) || 0;
+
+          return {
+            id: row.id?.replace("food-", ""),
+            food_code: cells[0].textContent.trim(),
+            quantity: quantity,
+            calories: parseFloat(cells[2].textContent) || 0,
+            proteins: parseFloat(cells[3].textContent) || 0,
+            carbs: parseFloat(cells[4].textContent) || 0,
+            fats: parseFloat(cells[5].textContent) || 0,
+          };
+        }
+      });
+  });
+
+  return mealsData;
+}
+
+// Diet name suggestions
+function showDietSuggestions(input) {
+  const value = input.value.toLowerCase().trim();
+  const suggestionsDiv = document.getElementById("dietSuggestions");
+  const savedDiets = Array.from(
+    document.querySelectorAll("#loadDietModal .list-group-item button.btn-link")
+  ).map((btn) => ({
+    id: btn.getAttribute("onclick").match(/loadDiet\((\d+)\)/)[1],
+    name: btn.textContent.trim(),
+  }));
+
+  // Clear previous suggestions
+  suggestionsDiv.innerHTML = "";
+
+  if (!value) {
+    suggestionsDiv.classList.add("d-none");
+    return;
+  }
+
+  // Filter matching diets
+  const matches = savedDiets.filter((diet) =>
+    diet.name.toLowerCase().includes(value)
+  );
+
+  // Add matching suggestions
+  matches.forEach((diet) => {
+    const div = document.createElement("div");
+    div.className = "diet-suggestion-item";
+    div.textContent = diet.name;
+    div.dataset.id = diet.id;
+    div.onclick = () => selectDietSuggestion(diet.name, diet.id);
+    suggestionsDiv.appendChild(div);
+  });
+
+  // Show suggestions if we have any matches
+  suggestionsDiv.classList.toggle("d-none", matches.length === 0);
+}
+
+function selectDietSuggestion(name, id) {
+  const input = document.getElementById("dietName");
+  input.value = name;
+  input.dataset.selectedId = id || "";
+  document.getElementById("dietSuggestions").classList.add("d-none");
+}
+
+function getDietInfo() {
+  const dietNameInput = document.getElementById("dietName");
+  const dietName = dietNameInput.value.trim();
+  return {
+    dietName,
+    existingDietId: dietNameInput.dataset.selectedId || null,
+  };
+}
+
+// Update addNewRow to use the helper function
+function addNewRow(mealType) {
+  const content = document.getElementById("${mealType}-content");
+  const btn = document
+    .querySelector("#${mealType}-content")
+    .closest(".card")
+    .querySelector(".expand-btn i");
+
+  // Ensure the section is expanded
+  if (content.style.display === "none") {
+    content.style.display = "block";
+    btn.classList.remove("fa-chevron-down");
+    btn.classList.add("fa-chevron-up");
+    content.style.opacity = "1";
+    content.style.transform = "translateY(0)";
+  }
+
+  const tbody = document.getElementById("${mealType}-foods");
+  const row = setupFoodRow(null, mealType);
+
+  // Find the total row (table-secondary class)
+  const totalRow = tbody.querySelector(".table-secondary");
+
+  if (totalRow) {
+    // Insert the new row before the total row
+    tbody.insertBefore(row, totalRow);
+  } else {
+    // If no total row found, just append to the end
+    tbody.appendChild(row);
+  }
+}
+
+// Search for food items
+async function searchFood(input) {
+  let searchResults = document.querySelector("#global-search-results");
+
+  // Se não existir, cria uma div global única para resultados
+  if (!searchResults) {
+    searchResults = document.createElement("div");
+    searchResults.id = "global-search-results";
+    searchResults.className =
+      "search-results position-absolute w-100 bg-white border rounded-bottom shadow-sm";
+    document.body.appendChild(searchResults);
+  }
+
+  const query = input.value.trim();
+
+  if (query.length < 2) {
+    searchResults.classList.add("d-none");
+    return;
+  }
+
+  const rect = input.getBoundingClientRect();
+
+  // Posiciona o dropdown global exatamente embaixo do input atual
+  searchResults.style.top = `${rect.bottom + window.scrollY}px`;
+  searchResults.style.left = `${rect.left + window.scrollX}px`;
+  searchResults.style.width = `${rect.width}px`;
+  searchResults.style.zIndex = 99999;
+  searchResults.innerHTML = "<div class='p-2'>Buscando...</div>";
+  searchResults.classList.remove("d-none");
+
+  try {
+    const data = await makeDietApiCall(
+      `/api/search_food?query=${encodeURIComponent(query)}`
+    );
+    searchResults.innerHTML = "";
+
+    if (!Array.isArray(data)) {
+      throw new Error("Formato de resposta inválido");
+    }
+
+    if (data.length === 0) {
+      searchResults.innerHTML =
+        "<div class='p-2 text-muted'>Nenhum alimento encontrado</div>";
+      return;
+    }
+
+    data.forEach((food) => {
+      const div = document.createElement("div");
+      div.className = "search-result p-2 border-bottom";
+      div.textContent = `${food.food_code}`;
+      div.onclick = () => {
+        selectFood(input, food);
+        searchResults.classList.add("d-none");
+      };
+      searchResults.appendChild(div);
+    });
+  } catch (error) {
+    console.error("Search Error:", error);
+    searchResults.innerHTML =
+      "<div class='p-2 text-danger'>Erro ao buscar alimentos: " +
+      (error.message || "Erro desconhecido") +
+      "</div>";
+  }
+
+  // Fecha o dropdown ao clicar fora
+  document.addEventListener("click", function handler(e) {
+    if (!input.contains(e.target) && !searchResults.contains(e.target)) {
+      searchResults.classList.add("d-none");
+      document.removeEventListener("click", handler);
+    }
+  });
+}
+
+// Select food from search results
+function selectFood(input, food) {
+  input.value = food.food_code;
+  input.nextElementSibling.classList.add("d-none");
+  const row = input.closest("tr");
+  const quantityInput = row.querySelector(".quantity");
+  quantityInput.value = food.qtd;
+  quantityInput.dispatchEvent(new Event("input")); // Trigger nutrition update
+  quantityInput.focus();
+}
+
+// Update nutrition values based on quantity
+async function updateNutrition(input) {
+  const row = input.closest("tr");
+  if (!row) {
+    console.error("Row element not found");
+    return;
+  }
+
+  const code = row.querySelector(".food-code");
+  if (!code) {
+    console.error("Food code input not found");
+    return;
+  }
+
+  const quantity = parseFloat(input.value) || 0;
+  if (quantity < 0) {
+    console.error("Invalid quantity value");
+    return;
+  }
+
+  if (code.value && quantity >= 0) {
+    try {
+      const data = await makeDietApiCall(
+        `/api/food_nutrition/${encodeURIComponent(
+          code.value
+        )}?quantity=${quantity}`
+      );
+      setNutritionalValues(row, {
+        calories: data.calories,
+        proteins: data.proteins,
+        carbs: data.carbs,
+        fats: data.fats,
+      });
+
+      const saveButton = row.querySelector(".save-food");
+      if (saveButton) {
+        saveButton.style.display = quantity > 0 ? "inline-block" : "none";
+      }
+    } catch (error) {
+      handleApiError(error, "Erro ao atualizar valores nutricionais");
+      resetNutritionalValues(row);
+      const saveButton = row.querySelector(".save-food");
+      if (saveButton) {
+        saveButton.style.display = "none";
+      }
+    }
+  } else {
+    resetNutritionalValues(row);
+    const saveButton = row.querySelector(".save-food");
+    if (saveButton) {
+      saveButton.style.display = "none";
+    }
+  }
+}
+
+// Save food entry
+async function saveFood(button, mealType) {
+  const row = button.closest("tr");
+  const foodCodeInput = row.querySelector(".food-code");
+  const quantityInput = row.querySelector(".quantity");
+  const code = foodCodeInput.value;
+  const quantity = parseFloat(quantityInput.value);
+
+  try {
+    const data = await makeDietApiCall("/api/add_food", {
+      method: "POST",
+      headers: { "Content-Type": "application/json" },
+      body: JSON.stringify({
+        food_code: code,
+        quantity: quantity,
+        meal_type: mealType,
+      }),
+    });
+
+    // Update the row with the returned data
+    setNutritionalValues(row, data.food);
+    row.id = `food-${data.food.id}`;
+
+    // Convert input fields to static td cells
+    const foodCodeCell = foodCodeInput.closest("td");
+    const quantityCell = quantityInput.closest("td");
+
+    // Replace food code input with static text
+    foodCodeCell.innerHTML = code;
+
+    // Replace quantity input with static text
+    quantityCell.innerHTML = `${quantity.toFixed(1)}g`;
+
+    // Update action buttons to include edit and delete
+    const actionButtons = row.querySelector(".action-buttons");
+    actionButtons.innerHTML = `
+      <button class="btn btn-primary btn-sm" onclick="editFoodRow(this)" title="Editar">
+        <i class="fas fa-edit"></i>
+      </button>
+      <button class="btn btn-danger" onclick="deleteFood(${data.food.id})" title="Remover">
+        <i class="fas fa-trash"></i>
+      </button>
+    `;
+
+    updateDailyTotals();
+  } catch (error) {
+    handleApiError(error, "Erro ao salvar alimento");
+    button.style.display = "inline-block";
+  }
+}
+
+// Delete food entry
+async function deleteFood(foodId) {
+  try {
+    const data = await makeDietApiCall(`/api/delete_food/${foodId}`, {
+      method: "DELETE",
+    });
+
+    const row = document.getElementById(`food-${foodId}`);
+    if (row) {
+      const tbody = row.closest("tbody");
+      const mealType = tbody.id.replace("-foods", "");
+      row.remove();
+      updateMealTotals(mealType);
+      updateDailyTotals();
+    }
+  } catch (error) {
+    handleApiError(error, "Erro ao remover alimento");
+  }
+}
+
+// Update updateMealTotals to handle row types better
+function updateMealTotals(mealType) {
+  const tbody = document.getElementById(`${mealType}-foods`);
+  if (!tbody) {
+    console.warn(`Table body not found for meal type: ${mealType}`);
+    return {
+      calories: 0,
+      proteins: 0,
+      carbs: 0,
+      fats: 0,
+    };
+  }
+
+  const totals = {
+    calories: 0,
+    proteins: 0,
+    carbs: 0,
+    fats: 0,
+  };
+
+  // Get all food rows in this meal (excluding header, footer, and template rows)
+  tbody
+    .querySelectorAll("tr:not(.table-secondary):not(.template-row)")
+    .forEach((row) => {
+      // Get values directly from the cells
+      const cells = row.cells;
+      if (cells.length >= 6) {
+        // Make sure we have enough cells
+        totals.calories += parseFloat(cells[2].textContent) || 0;
+        totals.proteins += parseFloat(cells[3].textContent) || 0;
+        totals.carbs += parseFloat(cells[4].textContent) || 0;
+        totals.fats += parseFloat(cells[5].textContent) || 0;
+      }
+    });
+
+  // Update meal totals in the footer
+  const tfoot = tbody.closest("table")?.querySelector("tfoot");
+  const totalRow = tfoot?.querySelector("tr");
+
+  if (totalRow) {
+    const cells = totalRow.cells;
+    if (cells.length >= 6) {
+      const strongElements = {
+        calories: cells[2].querySelector("strong"),
+        proteins: cells[3].querySelector("strong"),
+        carbs: cells[4].querySelector("strong"),
+        fats: cells[5].querySelector("strong"),
+      };
+
+      if (strongElements.calories)
+        strongElements.calories.textContent = totals.calories.toFixed(1);
+      if (strongElements.proteins)
+        strongElements.proteins.textContent = totals.proteins.toFixed(1) + "g";
+      if (strongElements.carbs)
+        strongElements.carbs.textContent = totals.carbs.toFixed(1) + "g";
+      if (strongElements.fats)
+        strongElements.fats.textContent = totals.fats.toFixed(1) + "g";
+    }
+  }
+
+  return totals;
+}
+
+// Update updateDailyTotals to use helpers
+function updateDailyTotals() {
+  const totals = {
+    calories: 0,
+    proteins: 0,
+    carbs: 0,
+    fats: 0,
+  };
+
+  // Calculate totals for each meal type
+  Object.keys(MEAL_TYPES).forEach((mealType) => {
+    const mealTotals = updateMealTotals(mealType);
+    totals.calories += mealTotals.calories;
+    totals.proteins += mealTotals.proteins;
+    totals.carbs += mealTotals.carbs;
+    totals.fats += mealTotals.fats;
+  });
+
+  updateTotalsDisplay(totals);
+}
+
+// Helper function to update nutrient boxes
+function updateNutrientBoxes(totals) {
+  const nutrientBoxes = document.querySelectorAll(".nutrient-box");
+  nutrientBoxes.forEach((box) => {
+    const valueElement = box.querySelector("p");
+    if (!valueElement) return;
+
+    for (const [type, info] of Object.entries(NUTRIENT_TYPES)) {
+      if (box.textContent.includes(info.label)) {
+        valueElement.textContent = `${totals[type].toFixed(1)}${info.unit}`;
         break;
       }
     }
   });
 }
-function toggleMealSection (mealType) {
-  const content = document.getElementById(`${mealType}-content`);
-  const icon    = content.closest('.card').querySelector('.expand-btn i');
 
-  const opened  = content.style.display !== 'none';
-  if (opened) {
-    content.style.display = 'none';
-    icon.classList.replace('fa-chevron-up', 'fa-chevron-down');
-  } else {
-    content.style.display = 'block';
-    icon.classList.replace('fa-chevron-down', 'fa-chevron-up');
+// Helper function to update progress bar
+function updateProgressBar(totalCalories) {
+  const progressWrapper = document.querySelector(".progress-wrapper");
+  if (!progressWrapper) return;
+
+  const caloriesDisplay = progressWrapper.querySelector(
+    ".d-flex span:last-child"
+  );
+  const progressBar = progressWrapper.querySelector(".progress-bar");
+  if (!caloriesDisplay || !progressBar) return;
+
+  // Extract goal calories once
+  const goalCalories =
+    parseFloat(caloriesDisplay.textContent.split("/")[1]) || 0;
+
+  // Update calories display
+  caloriesDisplay.textContent = `${totalCalories.toFixed(
+    1
+  )} / ${goalCalories.toFixed(1)} kcal`;
+
+  // Update progress bar
+  if (goalCalories > 0) {
+    const percentage = Math.min(100, (totalCalories / goalCalories) * 100);
+    progressBar.style.width = `${percentage}%`;
   }
 }
 
-/* exporta para que o HTML entenda o onclick="toggleMealSection(...)" */
+// Close search results when clicking outside
+document.addEventListener("click", function (event) {
+  if (!event.target.classList.contains("food-code")) {
+    const results = document.querySelectorAll(".search-results");
+    results.forEach((result) => result.classList.add("d-none"));
+  }
+});
 
-function updateProgressBar (totalCalories) {
-  const wrap = document.querySelector('.progress-wrapper');
-  if (!wrap) return;
-  const display = wrap.querySelector('.d-flex span:last-child');
-  const bar     = wrap.querySelector('.progress-bar');
-  const goal    = parseFloat(display.textContent.split('/')[1]) || 0;
-  display.textContent = `${totalCalories.toFixed(1)} / ${goal.toFixed(1)} kcal`;
-  if (goal > 0) bar.style.width = `${Math.min(100, (totalCalories / goal) * 100)}%`;
-}
-
-/* ------------------------------------------------------------------
- *  Tenta carregar a última dieta salva
- * ------------------------------------------------------------------ */
-async function loadLastDietIfExists () {
+async function loadDiet(dietId) {
   try {
-    const data = await makeDietApiCall('/api/last_diet');
-    if (data.success) {
-      // limpa tabelas
-      document.querySelectorAll('tbody[id$="-foods"]').forEach(tb => tb.innerHTML = '');
-      Object.entries(data.meals_data).forEach(([mealType, foods]) => {
-        const tbody = document.getElementById(`${mealType}-foods`);
-        foods.forEach(food => tbody.appendChild(__fm.setupFoodRow(food, mealType, true)));
-      });
-      console.log(`Dieta “${data.name}” carregada automaticamente.`);
-      return true;
-    }
-  } catch (err) {
-    console.warn('Nenhuma dieta anterior para carregar:', err.message);
+    const data = await makeDietApiCall(`/api/load_diet/${dietId}`);
+    clearAllTables();
+
+    // Add foods from the loaded diet
+    Object.entries(data.meals_data).forEach(([mealType, foods]) => {
+      const tbody = document.querySelector(`#${mealType}-foods`);
+      if (tbody) {
+        foods.forEach((food) => {
+          const row = createFoodRow(food);
+          tbody.appendChild(row);
+          // Update meal totals after each food is added
+          updateMealTotals(mealType);
+        });
+      }
+    });
+
+    closeModal("loadDietModal");
+    // Ensure totals are updated after all foods are loaded
+    updateDailyTotals();
+  } catch (error) {
+    alert("Erro ao carregar dieta: " + error.message);
   }
-  return false;
 }
 
-/* ------------------------------------------------------------------ */
+async function saveDiet() {
+  try {
+    const { dietName, existingDietId } = getDietInfo();
 
-class FoodManager {
-  constructor (mealTypes) {
-    this.mealTypes = Array.isArray(mealTypes)
-      ? mealTypes
-      : Object.keys(mealTypes || {});
+    if (!dietName) {
+      alert("Por favor, insira um nome para a dieta");
+      return;
+    }
 
-    const methodsToBind = [
-      'addNewRow', 'editFoodRow', 'saveFood', 'deleteFood',
-      'searchFood', 'selectFood', 'updateNutrition',
-      'updateMealTotals', 'updateDailyTotals',
-      'addMealTemplate', 'populateMealTemplates'
-    ];
-    methodsToBind.forEach(m => {
-      if (typeof this[m] === 'function') {
-        this[m] = this[m].bind(this);
-      } else {
-        console.warn(`FoodManager: método ausente -> ${m}`);
+    // If it's an existing diet, confirm overwrite
+    if (
+      existingDietId &&
+      !confirm(`A dieta "${dietName}" já existe. Deseja sobrescrevê-la?`)
+    ) {
+      return;
+    }
+
+    const mealsData = collectMealsData();
+    const url = existingDietId
+      ? `/api/save_diet?diet_id=${existingDietId}`
+      : "/api/save_diet";
+
+    await makeDietApiCall(url, {
+      method: "POST",
+      headers: { "Content-Type": "application/json" },
+      body: JSON.stringify({ name: dietName, meals_data: mealsData }),
+    });
+
+    closeModal("saveDietModal");
+    alert(
+      existingDietId
+        ? "Dieta atualizada com sucesso!"
+        : "Dieta salva com sucesso!"
+    );
+    location.reload();
+  } catch (error) {
+    alert("Erro ao salvar dieta: " + error.message);
+  }
+}
+
+// Event Listeners
+document.addEventListener("DOMContentLoaded", function () {
+  // Close search results when clicking outside
+  document.addEventListener("click", function (event) {
+    if (!event.target.classList.contains("food-code")) {
+      const results = document.querySelectorAll(".search-results");
+      results.forEach((result) => result.classList.add("d-none"));
+    }
+  });
+
+  // Update diet name when selecting an existing diet
+  const existingDietSelect = document.getElementById("existingDiet");
+  if (existingDietSelect) {
+    existingDietSelect.addEventListener("change", function () {
+      const selectedOption = this.options[this.selectedIndex];
+      const dietNameInput = document.getElementById("dietName");
+      if (dietNameInput) {
+        dietNameInput.value = selectedOption.value ? selectedOption.text : "";
+      }
+    });
+  }
+
+  // Calculate totals from existing rows on page load
+  Object.keys(MEAL_TYPES).forEach((mealType) => {
+    console.log(`Calculating totals for ${mealType}...`);
+    updateMealTotals(mealType);
+  });
+  updateDailyTotals();
+
+  // Diet name input handler
+  const dietNameInput = document.getElementById("dietName");
+  if (dietNameInput) {
+    dietNameInput.addEventListener("input", () =>
+      showDietSuggestions(dietNameInput)
+    );
+    dietNameInput.addEventListener("focus", () =>
+      showDietSuggestions(dietNameInput)
+    );
+
+    // Close suggestions when clicking outside
+    document.addEventListener("click", (event) => {
+      if (
+        !event.target.closest("#dietName") &&
+        !event.target.closest("#dietSuggestions")
+      ) {
+        document.getElementById("dietSuggestions").classList.add("d-none");
       }
     });
 
-    /* Callback principal da página -------------------------------- */
-    document.addEventListener('DOMContentLoaded', async () => {
-      await loadLastDietIfExists();                // tenta carregar última dieta
-      this.mealTypes.forEach(mt => this.updateMealTotals(mt));
-      this.updateDailyTotals();
+    // Handle keyboard navigation
+    dietNameInput.addEventListener("keydown", (event) => {
+      const suggestions = document.getElementById("dietSuggestions");
+      const items = suggestions.querySelectorAll(".diet-suggestion-item");
+      const activeItem = suggestions.querySelector(
+        ".diet-suggestion-item.active"
+      );
 
-      // esconde dropdowns ao clicar fora
-      document.addEventListener('click', e => {
-        if (!e.target.classList.contains('food-code'))
-          document.querySelectorAll('.search-results').forEach(d => d.classList.add('d-none'));
-      });
+      switch (event.key) {
+        case "ArrowDown":
+          event.preventDefault();
+          if (!suggestions.classList.contains("d-none")) {
+            if (!activeItem) {
+              items[0]?.classList.add("active");
+            } else {
+              const nextItem = activeItem.nextElementSibling;
+              if (nextItem) {
+                activeItem.classList.remove("active");
+                nextItem.classList.add("active");
+              }
+            }
+          }
+          break;
+
+        case "ArrowUp":
+          event.preventDefault();
+          if (!suggestions.classList.contains("d-none")) {
+            if (activeItem) {
+              const prevItem = activeItem.previousElementSibling;
+              if (prevItem) {
+                activeItem.classList.remove("active");
+                prevItem.classList.add("active");
+              }
+            }
+          }
+          break;
+
+        case "Enter":
+          if (!suggestions.classList.contains("d-none") && activeItem) {
+            event.preventDefault();
+            selectDietSuggestion(
+              activeItem.textContent.replace(" (existente)", ""),
+              activeItem.dataset.id
+            );
+          }
+          break;
+
+        case "Escape":
+          suggestions.classList.add("d-none");
+          break;
+      }
     });
   }
 
-  /* ---------- helpers internos ---------- */
-  _getNutritionalValues (row) {
-    return ['calories', 'proteins', 'carbs', 'fats'].reduce((acc, k) => {
-      const el = row.querySelector(`.${k}`);
-      acc[k] = el ? (parseFloat(el.textContent) || 0) : 0;
-      return acc;
-    }, {});
-  }
-
-  _setNutritionalValues (row, values, includeUnits = false) {
-    const isTotal = !!row.querySelector('strong');
-    const cell = (i, cls) => isTotal
-      ? row.cells[i].querySelector('strong')
-      : row.querySelector('.' + cls);
-
-    ['calories', 'proteins', 'carbs', 'fats'].forEach((k, i) => {
-      const el = cell(i + 2, k);
-      if (el) el.textContent = values[k].toFixed(1) + (includeUnits && k !== 'calories' ? 'g' : '');
-    });
-  }
-
-  _resetValues (row) {
-    this._setNutritionalValues(row, { calories: 0, proteins: 0, carbs: 0, fats: 0 });
-  }
-
-  getMealType (row) { return row.closest('tbody').id.replace('-foods', ''); }
-
-  _cloneTemplate () {
-    return document.getElementById('food-row-template')
-      .content.cloneNode(true).querySelector('tr');
-  }
-
-  /* ---------- criação / edição de linhas ---------- */
-  setupFoodRow (food = null, mealType = null, staticRow = false) {
-    const row = this._cloneTemplate();
-    if (food?.id) row.id = `food-${food.id}`;
-
-    const codeIn = row.querySelector('.food-code');
-    const qtyIn  = row.querySelector('.quantity');
-
-    if (food && (staticRow || food.id)) {
-      row.innerHTML = `
-        <td>${food.food_code}</td>
-        <td>${parseFloat(food.quantity).toFixed(1)}g</td>
-        <td class="calories">${parseFloat(food.calories).toFixed(1)}</td>
-        <td class="proteins">${parseFloat(food.proteins).toFixed(1)}g</td>
-        <td class="carbs">${parseFloat(food.carbs).toFixed(1)}g</td>
-        <td class="fats">${parseFloat(food.fats).toFixed(1)}g</td>
-        <td>
-          <div class="action-buttons">
-            <button class="btn btn-primary btn-sm" onclick="editFoodRow(this)"><i class="fas fa-edit"></i></button>
-            <button class="btn btn-danger btn-sm"  onclick="deleteFood(${food.id})"><i class="fas fa-trash"></i></button>
-          </div>
-        </td>`;
-      return row;
-    }
-
-    if (food) {
-      codeIn.value = food.food_code;
-      qtyIn.value  = food.quantity;
-      this._setNutritionalValues(row, food, true);
-    }
-
-    codeIn.addEventListener('input', () => this.searchFood(codeIn));
-    qtyIn.addEventListener('input',  () => this.updateNutrition(qtyIn));
-    row.querySelector('.save-food').onclick = () => this.saveFood(row.querySelector('.save-food'), mealType);
-
-    return row;
-  }
-
-  editFoodRow (btn) {
-    const row = btn.closest('tr');
-    const cells = row.cells;
-    const code  = cells[0].textContent.trim();
-    const qty   = parseFloat(cells[1].textContent);
-
-    cells[0].innerHTML = `
-      <div class="input-group">
-        <input type="text" class="form-control food-code" value="${code}" onkeyup="searchFood(this)">
-        <div class="search-results d-none position-absolute w-100 bg-white border rounded-bottom shadow-sm" style="z-index:1000;top:100%"></div>
-      </div>`;
-    cells[1].innerHTML = `
-      <input type="number" class="form-control quantity" value="${qty}" min="0" step="1" style="width:80px" oninput="updateNutrition(this)">`;
-
-    ['calories', 'proteins', 'carbs', 'fats'].forEach((k, i) => {
-      cells[i + 2].innerHTML = `<span class="${k}">${parseFloat(cells[i + 2].textContent)}</span>`;
-    });
-
-    const id = row.id.replace('food-', '');
-    cells[6].querySelector('.action-buttons').innerHTML = `
-      <button class="btn btn-success save-food" onclick="saveFood(this,'${this.getMealType(row)}')"><i class="fas fa-check"></i></button>
-      <button class="btn btn-danger" onclick="deleteFood(${id})"><i class="fas fa-trash"></i></button>`;
-  }
-
-  addNewRow (mealType) {
+  // Initialize meal sections
+  Object.keys(MEAL_TYPES).forEach((mealType) => {
     const content = document.getElementById(`${mealType}-content`);
-    const icon    = content.closest('.card').querySelector('.expand-btn i');
-
-    if (content.style.display === 'none') {
-      content.style.display = 'block';
-      icon.classList.replace('fa-chevron-down', 'fa-chevron-up');
-    }
-
+    const btn = document
+      .querySelector(`#${mealType}-content`)
+      .closest(".card")
+      .querySelector(".expand-btn i");
     const tbody = document.getElementById(`${mealType}-foods`);
-    const row   = this.setupFoodRow(null, mealType);
-    const total = tbody.querySelector('.table-secondary');
-    total ? tbody.insertBefore(row, total) : tbody.appendChild(row);
+
+    // Check if there are any food rows (excluding the total row)
+    const hasFood =
+      tbody &&
+      Array.from(tbody.children).some(
+        (row) =>
+          !row.classList.contains("table-secondary") &&
+          !row.classList.contains("template-row")
+      );
+
+    if (hasFood) {
+      content.style.display = "block";
+      btn.classList.remove("fa-chevron-down");
+      btn.classList.add("fa-chevron-up");
+      // Animate the content
+      content.style.opacity = "1";
+      content.style.transform = "translateY(0)";
+    }
+  });
+
+  // Populate meal templates
+  populateMealTemplates();
+});
+
+// Delete diet
+async function deleteDiet(dietId) {
+  if (!confirm("Tem certeza que deseja excluir esta dieta?")) {
+    return;
   }
 
-  /* ---------- BUSCA de alimentos ---------- */
-  async searchFood (input) {
-    let dd = input.nextElementSibling;
-    if (!dd || !dd.classList.contains('search-results')) {
-      // cria/usa dropdown global
-      dd = document.getElementById('global-search-results');
-      if (!dd) {
-        dd = document.createElement('div');
-        dd.id = 'global-search-results';
-        dd.className = 'search-results position-absolute w-100 bg-white border rounded-bottom shadow-sm';
-        document.body.appendChild(dd);
-      }
+  try {
+    const data = await makeDietApiCall(`/api/delete_diet/${dietId}`, {
+      method: "DELETE",
+      headers: { "Content-Type": "application/json" },
+    });
+
+    // Remove the diet item from the list
+    const dietItem = document
+      .querySelector([(onclick = "deleteDiet(${dietId})")])
+      .closest(".list-group-item");
+    dietItem.remove();
+
+    // If this was the last diet, close the modal
+    const remainingDiets = document.querySelectorAll(".list-group-item");
+    if (remainingDiets.length === 0) {
+      closeModal("loadDietModal");
     }
 
-    const q = input.value.trim();
-    if (q.length < 2) { dd.classList.add('d-none'); return; }
+    alert("Dieta excluída com sucesso!");
+  } catch (error) {
+    handleApiError(error, "Erro ao excluir dieta");
+  }
+}
 
-    if (dd.id === 'global-search-results') {
-      const r = input.getBoundingClientRect();
-      dd.style.top  = `${r.bottom + window.scrollY}px`;
-      dd.style.left = `${r.left  + window.scrollX}px`;
-      dd.style.width = `${r.width}px`;
+// Add this function to handle meal section toggling
+function toggleMealSection(mealType) {
+  const content = document.getElementById(`${mealType}-content`);
+  const btn = document
+    .querySelector(`#${mealType}-content`)
+    .closest(".card")
+    .querySelector(".expand-btn i");
+
+  if (content.style.display === "none") {
+    content.style.display = "block";
+    btn.classList.remove("fa-chevron-down");
+    btn.classList.add("fa-chevron-up");
+    // Animate the content
+    content.style.opacity = "0";
+    content.style.transform = "translateY(-10px)";
+    setTimeout(() => {
+      content.style.transition = "all 0.3s ease";
+      content.style.opacity = "1";
+      content.style.transform = "translateY(0)";
+    }, 10);
+  } else {
+    content.style.opacity = "0";
+    content.style.transform = "translateY(-10px)";
+    setTimeout(() => {
+      content.style.display = "none";
+      btn.classList.remove("fa-chevron-up");
+      btn.classList.add("fa-chevron-down");
+    }, 300);
+  }
+}
+
+// Add export to Excel functionality
+async function exportToExcel() {
+  try {
+    // Collect all meal data
+    const mealsData = collectMealsData();
+
+    // Get the current date for the filename
+    const date = new Date().toISOString().split("T")[0];
+    const filename = `dieta_${date}.xlsx`;
+
+    // Make API call to get the Excel file
+    const response = await fetch("/api/export_diet", {
+      method: "POST",
+      headers: {
+        "Content-Type": "application/json",
+      },
+      body: JSON.stringify(mealsData),
+    });
+
+    if (!response.ok) {
+      throw new Error("Erro ao exportar dieta");
     }
 
-    dd.innerHTML = '<div class="p-2">Buscando...</div>';
-    dd.classList.remove('d-none');
+    // Convert response to blob
+    const blob = await response.blob();
 
-    try {
-      const foods = await makeDietApiCall(`/api/search_food?query=${encodeURIComponent(q)}`);
-      dd.innerHTML = '';
-      if (!foods.length) {
-        dd.innerHTML = '<div class="p-2 text-muted">Nenhum alimento encontrado</div>';
-        return;
+    // Create download link and trigger download
+    const url = window.URL.createObjectURL(blob);
+    const a = document.createElement("a");
+    a.href = url;
+    a.download = filename;
+    document.body.appendChild(a);
+    a.click();
+    window.URL.revokeObjectURL(url);
+    document.body.removeChild(a);
+  } catch (error) {
+    console.error("Export Error:", error);
+    alert("Erro ao exportar dieta: " + error.message);
+  }
+}
+
+// Function to add a meal template
+async function addMealTemplate(mealType, templateId) {
+  try {
+    // Get template details from API
+    const response = await fetch(`/api/meal_templates/${templateId}`);
+    const data = await response.json();
+
+    if (!data.success) {
+      throw new Error("Erro ao carregar template");
+    }
+
+    const template = data.template;
+
+    // Add each food item from the template
+    for (const food of template.foods) {
+      // Get food details from API
+      const foodResponse = await fetch(`/api/food_nutrition/${food.food_code}`);
+      const foodData = await foodResponse.json();
+
+      if (!foodData.success) {
+        showAlert(`Erro ao carregar alimento ${food.food_code}`, "danger");
+        continue;
       }
-      foods.forEach(f => {
-        const d = document.createElement('div');
-        d.className = 'p-2 border-bottom';
-        d.style.cursor = 'pointer';
-        d.textContent  = f.food_code;
-        d.onclick      = () => this.selectFood(input, f);
-        dd.appendChild(d);
+
+      // Create food object
+      const foodObj = {
+        food_code: food.food_code,
+        quantity: food.quantity,
+        meal_type: mealType,
+        nutrition: {
+          calories: (foodData.calories * food.quantity) / foodData.quantity,
+          proteins: (foodData.proteins * food.quantity) / foodData.quantity,
+          carbs: (foodData.carbs * food.quantity) / foodData.quantity,
+          fats: (foodData.fats * food.quantity) / foodData.quantity,
+        },
+      };
+
+      // Add food to the meal
+      const response2 = await fetch("/api/add_food", {
+        method: "POST",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify(foodObj),
       });
-    } catch (e) {
-      handleApiError(e, 'Erro ao buscar alimentos');
-    }
-  }
 
-  selectFood (input, food) {
-    input.value = food.food_code;
-    const localDD = input.nextElementSibling;
-    localDD ? localDD.classList.add('d-none')
-            : document.getElementById('global-search-results')?.classList.add('d-none');
+      const result = await response2.json();
 
-    const row = input.closest('tr');
-    const qty = row.querySelector('.quantity');
-    qty.value = food.qtd;
-    qty.dispatchEvent(new Event('input'));
-    qty.focus();
-  }
+      if (result.success) {
+        // Add food row to the table
+        const section = document.getElementById(`${mealType}-foods`);
+        if (!section) {
+          console.error(`Section not found for meal type: ${mealType}`);
+          continue;
+        }
 
-  /* ---------- nutricional / salvar / deletar ---------- */
-  async updateNutrition (qtyIn) {
-    const row  = qtyIn.closest('tr');
-    const code = row.querySelector('.food-code').value;
-    const qty  = parseFloat(qtyIn.value) || 0;
-    if (!code) { this._resetValues(row); return; }
-
-    try {
-      const d = await makeDietApiCall(`/api/food_nutrition/${encodeURIComponent(code)}?quantity=${qty}`);
-      this._setNutritionalValues(row, d);
-      row.querySelector('.save-food').style.display = qty > 0 ? 'inline-block' : 'none';
-    } catch (e) {
-      handleApiError(e, 'Erro ao atualizar valores nutricionais');
-      this._resetValues(row);
-      row.querySelector('.save-food').style.display = 'none';
-    }
-  }
-
-  async saveFood (btn, mealType) {
-    const row  = btn.closest('tr');
-    const code = row.querySelector('.food-code').value;
-    const qty  = parseFloat(row.querySelector('.quantity').value);
-
-    try {
-      const res = await makeDietApiCall('/api/add_food', {
-        method : 'POST',
-        headers: { 'Content-Type': 'application/json' },
-        body   : JSON.stringify({ food_code: code, quantity: qty, meal_type: mealType })
-      });
-
-      const f = res.food;
-      this._setNutritionalValues(row, f);
-      row.id = `food-${f.id}`;
-
-      // converte inputs para texto fixo
-      row.querySelector('.food-code').closest('td').textContent = code;
-      row.querySelector('.quantity').closest('td').textContent  = `${qty.toFixed(1)}g`;
-      row.querySelector('.action-buttons').innerHTML = `
-        <button class="btn btn-primary btn-sm" onclick="editFoodRow(this)"><i class="fas fa-edit"></i></button>
-        <button class="btn btn-danger btn-sm"  onclick="deleteFood(${f.id})"><i class="fas fa-trash"></i></button>`;
-
-      this.updateDailyTotals();
-    } catch (e) {
-      handleApiError(e, 'Erro ao salvar alimento');
-      btn.style.display = 'inline-block';
-    }
-  }
-
-  async deleteFood (id) {
-    try {
-      await makeDietApiCall(`/api/delete_food/${id}`, { method: 'DELETE' });
-      const row = document.getElementById(`food-${id}`);
-      if (row) {
-        const mt = this.getMealType(row);
-        row.remove();
-        this.updateMealTotals(mt);
-        this.updateDailyTotals();
-      }
-    } catch (e) {
-      handleApiError(e, 'Erro ao remover alimento');
-    }
-  }
-
-  /* ---------- Templates de refeição ---------- */
-  async addMealTemplate (mealType, templateId) {
-    try {
-      const { template } = await makeDietApiCall(`/api/meal_templates/${templateId}`);
-      for (const food of template.foods) {
-        const nutri = await makeDietApiCall(
-          `/api/food_nutrition/${food.food_code}?quantity=${food.quantity}`
-        );
-
-        const row = this.setupFoodRow(
+        const row = setupFoodRow(
           {
-            id        : nutri.food_code + Date.now(), // id único na UI
-            food_code : nutri.food_code,
-            quantity  : food.quantity,
-            ...nutri
+            id: result.food.id,
+            food_code: food.food_code,
+            quantity: food.quantity,
+            calories: foodObj.nutrition.calories,
+            proteins: foodObj.nutrition.proteins,
+            carbs: foodObj.nutrition.carbs,
+            fats: foodObj.nutrition.fats,
           },
           mealType,
           true
         );
-        document.getElementById(`${mealType}-foods`).appendChild(row);
+
+        section.appendChild(row);
+      } else {
+        showAlert(`Erro ao adicionar ${food.food_code}`, "danger");
       }
-      this.updateMealTotals(mealType);
-      this.updateDailyTotals();
-      closeModal(`mealTemplateModal-${mealType}`);
-    } catch (e) {
-      handleApiError(e, 'Erro ao adicionar template');
     }
-  }
 
-  async populateMealTemplates (mealType) {
-    const box = document.getElementById(`meal-templates-${mealType}`);
-    if (!box) return;
-    box.innerHTML = '<div class="p-2">Carregando…</div>';
-    try {
-      const { templates } = await makeDietApiCall(`/api/meal_templates?meal_type=${mealType}`);
-      box.innerHTML = '';
-      templates.forEach(tpl => {
-        const btn = document.createElement('button');
-        btn.type  = 'button';
-        btn.className = 'list-group-item list-group-item-action';
-        btn.innerHTML = `
-          <div class="d-flex justify-content-between align-items-center">
-            <div>
-              <h6 class="mb-1">${tpl.name}</h6>
-              <small class="text-muted">${tpl.foods.map(f => f.food_code).join(', ')}</small>
-            </div>
-            <span class="badge bg-primary rounded-pill">${tpl.foods.length}</span>
-          </div>`;
-        btn.onclick = () => this.addMealTemplate(mealType, tpl.id);
-        box.appendChild(btn);
-      });
-    } catch (e) {
-      box.innerHTML = '<div class="p-2 text-danger">Erro ao carregar templates</div>';
+    // Update totals
+    updateMealTotals(mealType);
+    updateDailyTotals();
+
+    // Close the modal
+    const modal = document.getElementById(`mealTemplateModal-${mealType}`);
+    if (modal) {
+      const bsModal = bootstrap.Modal.getInstance(modal);
+      if (bsModal) {
+        bsModal.hide();
+      }
     }
-  }
 
-  /* ---------- Totais ---------- */
-  updateMealTotals (mealType) {
-    const tbody = document.getElementById(`${mealType}-foods`);
-    if (!tbody) return { calories: 0, proteins: 0, carbs: 0, fats: 0 };
-
-    const totals = { calories: 0, proteins: 0, carbs: 0, fats: 0 };
-    tbody.querySelectorAll('tr:not(.table-secondary):not(.template-row)').forEach(r => {
-      const v = this._getNutritionalValues(r);
-      Object.keys(totals).forEach(k => totals[k] += v[k]);
-    });
-
-    const tfoot = tbody.closest('table').querySelector('tfoot tr');
-    if (tfoot) this._setNutritionalValues(tfoot, totals, true);
-    return totals;
-  }
-
-  updateDailyTotals () {
-    const d = { calories: 0, proteins: 0, carbs: 0, fats: 0 };
-    this.mealTypes.forEach(mt => {
-      const m = this.updateMealTotals(mt);
-      Object.keys(d).forEach(k => d[k] += m[k]);
-    });
-
-    if (isGuestMode()) {
-      document.getElementById('total-calories').textContent = d.calories.toFixed(1);
-      document.getElementById('total-proteins').textContent = d.proteins.toFixed(1);
-      document.getElementById('total-carbs').textContent    = d.carbs.toFixed(1);
-      document.getElementById('total-fats').textContent     = d.fats.toFixed(1);
-    } else {
-      updateNutrientBoxes(d);
-      updateProgressBar(d.calories);
-    }
+    showAlert("Refeição adicionada com sucesso!", "success");
+  } catch (error) {
+    console.error("Error adding meal template:", error);
+    showAlert("Erro ao adicionar refeição", "danger");
   }
 }
 
-/* ------------------------------------------------------------------
- * Instância global + export para o HTML
- * ------------------------------------------------------------------ */
-const __fm = new FoodManager(
-  typeof MEAL_TYPES === 'undefined'
-    ? []
-    : (Array.isArray(MEAL_TYPES) ? MEAL_TYPES : Object.keys(MEAL_TYPES))
-);
+// Function to populate meal templates for a specific meal type
+async function populateMealTemplates(mealType) {
+  try {
+    const container = document.getElementById(`meal-templates-${mealType}`);
+    if (!container) return;
 
-const exportedFns = [
-  'addNewRow', 'editFoodRow', 'saveFood', 'deleteFood',
-  'searchFood', 'selectFood', 'updateNutrition',
-  'updateMealTotals', 'updateDailyTotals',
-  'addMealTemplate', 'populateMealTemplates'
-];
+    container.innerHTML = ""; // Clear existing content
 
-exportedFns.forEach(name => {
-  if (typeof __fm[name] === 'function') {
-    window[name] = __fm[name].bind(__fm);   // agora correto
-  } else {
-    console.warn(`export: método ausente -> ${name}`);
+    try {
+      const response = await fetch(`/api/meal_templates?meal_type=${mealType}`);
+      const data = await response.json();
+
+      if (!data.success) {
+        throw new Error("Erro ao carregar templates");
+      }
+
+      data.templates.forEach((template) => {
+        const foodNames = template.foods
+          .map((food) => food.food_code)
+          .join(", ");
+        const button = document.createElement("button");
+        button.type = "button";
+        button.className = "list-group-item list-group-item-action";
+        button.onclick = () => addMealTemplate(mealType, template.id);
+
+        button.innerHTML = `
+                    <div class="d-flex justify-content-between align-items-center">
+                        <div>
+                            <h6 class="mb-1">${template.name}</h6>
+                            <small class="text-muted">${foodNames}</small>
+                        </div>
+                        <span class="badge bg-primary rounded-pill">${
+                          template.foods.length
+                        } item${template.foods.length > 1 ? "s" : ""}</span>
+                    </div>
+                `;
+
+        container.appendChild(button);
+      });
+    } catch (error) {
+      console.error("Error loading meal templates:", error);
+      showAlert("Erro ao carregar templates de refeições", "danger");
+    }
+  } catch (error) {
+    console.error("Error in populateMealTemplates:", error);
+    showAlert("Erro ao carregar templates de refeições", "danger");
   }
+}
+
+// Funções básicas do dashboard
+function updateDashboard() {
+  // Implementação futura
+}
+
+// Event Listeners
+document.addEventListener("DOMContentLoaded", function () {
+  updateDashboard();
 });
-
-/* ------------------------------------------------------------------
- *  Demais funções (saveDiet, loadDiet, exportToExcel etc.) – sem
- *  alterações de lógica, pois já chamam os métodos de __fm.
- * ------------------------------------------------------------------ */
-/* … (mantenha aqui o resto do arquivo sem mudanças) … */
-
-/* ------------------------------------------------------------------
- * Listeners adicionais
- * ------------------------------------------------------------------ */
-document.addEventListener('DOMContentLoaded', () => {
-  const dietNameInput = document.getElementById('dietName');
-  if (dietNameInput) {
-    dietNameInput.addEventListener('input', ()  => showDietSuggestions(dietNameInput));
-    dietNameInput.addEventListener('focus', ()  => showDietSuggestions(dietNameInput));
-  }
-});
-
-
-window.toggleMealSection = toggleMealSection;
-window.saveDiet       = saveDiet;
-window.loadDiet       = loadDiet;
-window.deleteDiet     = deleteDiet;
-window.exportToExcel  = exportToExcel;
