@@ -149,7 +149,8 @@ body {
 .form-control {
   border-radius: 8px;
   border: 1px solid rgba(0, 0, 0, 0.1);
-  padding: 0.75rem 1rem;
+  padding: 0.375rem 0.75rem;
+  height: auto;
   transition: var(--transition);
 }
 
@@ -554,4 +555,130 @@ body {
 /* Diet name input styles */
 .diet-name-input {
   position: relative;
+}
+#global-search-results,
+#global-search-results-calculator {
+  overflow-x: hidden !important; /* Remove a barra horizontal */
+  max-width: 400px; /* Define uma largura máxima agradável */
+  white-space: nowrap; /* Impede que o texto quebre em múltiplas linhas */
+  text-overflow: ellipsis; /* Adiciona reticências (...) caso o texto seja muito grande */
+}
+
+.search-result {
+  overflow: hidden;
+  text-overflow: ellipsis;
+}
+
+/* Dashboard Specific Styles */
+.nutrient-box {
+  background: var(--card-background);
+  border-radius: var(--border-radius);
+  box-shadow: var(--shadow-sm);
+  padding: 1.25rem !important;
+  transition: var(--transition);
+  animation: fadeIn 0.5s ease-out;
+}
+
+.nutrient-box:hover {
+  transform: translateY(-4px) scale(1.02);
+  box-shadow: var(--shadow-lg);
+}
+
+.nutrient-box h6 {
+  color: var(--text-muted);
+  font-size: 0.875rem;
+  margin-bottom: 0.5rem;
+}
+
+.nutrient-box p {
+  color: var(--text-color);
+  font-size: 1.25rem;
+  font-weight: 600;
+  transition: var(--transition);
+}
+
+.nutrient-box:hover p {
+  color: var(--primary-color);
+}
+
+/* Search Results */
+.search-results {
+  background: var(--card-background);
+  border-radius: var(--border-radius);
+  box-shadow: var(--shadow-md);
+  max-height: 200px;
+  overflow-y: auto;
+}
+
+.search-result {
+  padding: 0.75rem 1rem;
+  cursor: pointer;
+  transition: var(--transition);
+}
+
+.search-result:hover {
+  background-color: rgba(180, 217, 87, 0.1);
+}
+
+/* Action Buttons */
+.action-buttons .btn {
+  margin-right: 0.5rem;
+}
+
+.action-buttons .btn:hover {
+  transform: var(--scale-btn);
+}
+
+.action-buttons .btn-danger:hover {
+  background-color: #dc3545;
+  border-color: #dc3545;
+}
+
+.action-buttons .btn-success:hover {
+  background-color: #28a745;
+  border-color: #28a745;
+}
+
+/* Diet Suggestions */
+.diet-suggestions {
+  background: var(--card-background);
+  border-radius: var(--border-radius);
+  padding: 1.5rem;
+  margin-top: 2rem;
+  box-shadow: var(--shadow-sm);
+}
+
+.diet-suggestion-item {
+  padding: 1rem;
+  border-bottom: 1px solid var(--border-color);
+  transition: var(--transition);
+}
+
+.diet-suggestion-item:hover,
+.diet-suggestion-item:last-child {
+  border-bottom: none;
+}
+
+.diet-name-input {
+  width: 100%;
+}
+
+/* Responsive Styles */
+@media (max-width: 768px) {
+  .card-header {
+    padding: 1rem;
+  }
+
+  .card-body {
+    padding: 1rem;
+  }
+
+  .nutrient-box {
+    margin-bottom: 1rem;
+  }
+
+  .table td,
+  .table th {
+    padding: 0.75rem;
+  }
 }

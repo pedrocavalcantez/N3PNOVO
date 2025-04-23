@@ -111,3 +111,4 @@ class EditProfileForm(FlaskForm):
     objetivo = SelectField(
         "Objetivo", choices=list(OBJECTIVE_DISPLAY.items()), validators=[DataRequired()]
     )
+    submit = SubmitField("Atualizar Perfil")

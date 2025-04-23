@@ -222,14 +222,14 @@ endif %} {% block title %}{% endblock %} {% if request.args.get('complement') ==
               </div>
               <div id="foodsList">
                 <div class="food-item">
-                  <div class="d-flex align-items-center gap-3">
-                    <div class="input-group">
+                  <div class="d-flex align-items-start gap-3">
+                    <div class="input-group" style="max-width: 600px;">
                       <input
                         type="text"
                         class="form-control food-code"
                         placeholder="Código do alimento"
                         onkeyup="searchFood(this)"
-                        style="min-width: 300px"
+                        style="width: 200px"
                       />
                       <input
                         type="number"
@@ -260,14 +260,31 @@ endif %} {% block title %}{% endblock %} {% if request.args.get('complement') ==
                         style="z-index: 1000; top: 100%"
                       ></div>
                     </div>
-                    <div class="food-info d-none" style="white-space: nowrap">
-                      <small class="text-muted">
-                        Porção: <span class="food-quantity">0</span>g • Cal:
-                        <span class="food-calories">0</span> • Prot:
-                        <span class="food-proteins">0</span>g • Carb:
-                        <span class="food-carbs">0</span>g • Gord:
-                        <span class="food-fats">0</span>g
-                      </small>
+                    <div class="food-info d-none">
+                      <div class="nutrition-info">
+                        <div class="d-flex gap-4">
+                          <div class="nutrition-item text-center">
+                            <small class="text-muted d-block">Porção</small>
+                            <span class="food-quantity">0</span>g
+                          </div>
+                          <div class="nutrition-item text-center">
+                            <small class="text-muted d-block">Calorias</small>
+                            <span class="food-calories">0</span>
+                          </div>
+                          <div class="nutrition-item text-center">
+                            <small class="text-muted d-block">Proteínas</small>
+                            <span class="food-proteins">0</span>g
+                          </div>
+                          <div class="nutrition-item text-center">
+                            <small class="text-muted d-block">Carboidratos</small>
+                            <span class="food-carbs">0</span>g
+                          </div>
+                          <div class="nutrition-item text-center">
+                            <small class="text-muted d-block">Gorduras</small>
+                            <span class="food-fats">0</span>g
+                          </div>
+                        </div>
+                      </div>
                     </div>
                   </div>
                 </div>

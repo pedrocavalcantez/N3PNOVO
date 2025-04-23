@@ -4,7 +4,24 @@
   // Constants from server
   const MEAL_TYPES = {{ meal_types|tojson }};
 </script>
-<div class="container">
+<div class="container mt-4">
+    <h1>Dashboard</h1>
+    
+    {% if diet %}
+    <div class="card mb-4">
+        <div class="card-header">
+            <h5 class="mb-0">Dieta Atual: {{ diet.name }}</h5>
+        </div>
+        <div class="card-body">
+            <p>Data de criação: {{ diet.created_at.strftime('%d/%m/%Y') }}</p>
+        </div>
+    </div>
+    {% else %}
+    <div class="alert alert-info">
+        Você ainda não tem nenhuma dieta cadastrada.
+    </div>
+    {% endif %}
+
   <!-- Nutritional Summary -->
   <div class="row mb-4">
     <div class="col-md-12">
@@ -159,12 +176,21 @@
             </button>
             <h5 class="mb-0">{{ meal_name }}</h5>
           </div>
-          <button
-            class="btn btn-primary btn-sm"
-            onclick="addNewRow('{{ meal_type }}')"
-          >
-            <i class="fas fa-plus me-1"></i>Adicionar Alimento
-          </button>
+          <div>
+            <button
+              class="btn btn-success btn-sm me-2"
+              data-bs-toggle="modal"
+              data-bs-target="#mealTemplateModal-{{ meal_type }}"
+            >
+              <i class="fas fa-utensils me-1"></i>Adicionar Refeição
+            </button>
+            <button
+              class="btn btn-primary btn-sm"
+              onclick="addNewRow('{{ meal_type }}')"
+            >
+              <i class="fas fa-plus me-1"></i>Adicionar Alimento
+            </button>
+          </div>
         </div>
         <div
           class="card-body meal-content"
@@ -238,49 +264,120 @@
           placeholder="Código do alimento"
           onkeyup="searchFood(this)"
         />
-        <div
-          class="search-results d-none position-absolute w-100 bg-white border rounded-bottom shadow-sm"
-          style="z-index: 1000; top: 100%"
-        >
-          <!-- Search results will be populated here -->
-        </div>
+        <div class="dropdown-menu food-search-results"></div>
       </div>
     </td>
     <td>
       <input
         type="number"
         class="form-control quantity"
-        placeholder=""
+        placeholder="Quantidade"
         step="1"
         min="0"
-        oninput="updateNutrition(this)"
         style="width: 80px"
+        oninput="updateNutrition(this)"
       />
     </td>
-    <td class="calories">0</td>
-    <td class="proteins">0</td>
-    <td class="carbs">0</td>
-    <td class="fats">0</td>
+    <td class="calories">0.0</td>
+    <td class="proteins">0.0</td>
+    <td class="carbs">0.0</td>
+    <td class="fats">0.0</td>
     <td>
       <div class="action-buttons">
-        <button
-          class="btn btn-success save-food"
-          style="display: none"
-          title="Salvar"
-        >
+        <button class="btn btn-success btn-sm save-food" style="display: none" title="Confirmar">
           <i class="fas fa-check"></i>
         </button>
-        <button
-          class="btn btn-danger"
-          onclick="this.closest('tr').remove()"
-          title="Remover"
-        >
-          <i class="fas fa-times"></i>
+        <button class="btn btn-danger btn-sm" onclick="removeRow(this)" title="Remover alimento">
+          <i class="fas fa-trash"></i>
         </button>
       </div>
     </td>
   </tr>
 </template>
+
+<!-- Meal Template Modals -->
+{% for meal_type, meal_name in meal_types.items() %}
+<div class="modal fade" id="mealTemplateModal-{{ meal_type }}" tabindex="-1">
+  <div class="modal-dialog">
+    <div class="modal-content">
+      <div class="modal-header">
+        <h5 class="modal-title">Adicionar Refeição Predefinida - {{ meal_name }}</h5>
+        <button type="button" class="btn-close" data-bs-dismiss="modal"></button>
+      </div>
+      <div class="modal-body">
+        <div class="list-group" id="meal-templates-{{ meal_type }}">
+          <!-- Templates will be populated by JavaScript -->
+        </div>
+      </div>
+    </div>
+  </div>
+</div>
+{% endfor %}
+
+<script>
+function loadMealTemplates(mealType) {
+  var container = document.getElementById('meal-templates-' + mealType);
+  if (!container) return;
+
+  var request = new XMLHttpRequest();
+  request.open('GET', '/api/meal_templates?meal_type=' + mealType, true);
+  
+  request.onload = function() {
+    if (request.status >= 200 && request.status < 400) {
+      var data = JSON.parse(request.responseText);
+      
+      if (!data.success) {
+        showAlert('Erro ao carregar templates de refeições', 'danger');
+        return;
+      }
+      
+      container.innerHTML = '';
+      
+      data.templates.forEach(function(template) {
+        var foodNames = template.foods.map(function(food) { 
+          return food.food_code; 
+        }).join(', ');
+        
+        var button = document.createElement('button');
+        button.type = 'button';
+        button.className = 'list-group-item list-group-item-action';
+        button.onclick = function() {
+          addMealTemplate(mealType, template.id);
+        };
+        
+        var itemText = template.foods.length > 1 ? ' items' : ' item';
+        button.innerHTML = 
+          '<div class="d-flex justify-content-between align-items-center">' +
+            '<div>' +
+              '<h6 class="mb-1">' + template.name + '</h6>' +
+              '<small class="text-muted">' + foodNames + '</small>' +
+            '</div>' +
+            '<span class="badge bg-primary rounded-pill">' + 
+              template.foods.length + itemText +
+            '</span>' +
+          '</div>';
+        
+        container.appendChild(button);
+      });
+    } else {
+      showAlert('Erro ao carregar templates de refeições', 'danger');
+    }
+  };
+  
+  request.onerror = function() {
+    showAlert('Erro ao carregar templates de refeições', 'danger');
+  };
+  
+  request.send();
+}
+
+// Carregar templates quando o modal é aberto
+{% for meal_type in meal_types %}
+document.getElementById('mealTemplateModal-{{ meal_type }}').addEventListener('show.bs.modal', function() {
+  loadMealTemplates('{{ meal_type }}');
+});
+{% endfor %}
+</script>
 
 <!-- Save Diet Modal -->
 <div class="modal fade" id="saveDietModal" tabindex="-1">
@@ -418,4 +515,5 @@
 <script src="{{ url_for('static', filename='js/dashboard.js') }}"></script>
 {% if request.args.get('complement') == 'true' %}
 <script src="{{ url_for('static', filename='js/calculator.js') }}"></script>
-{% endif %} {% endblock %}
+{% endif %}
+{% endblock %}

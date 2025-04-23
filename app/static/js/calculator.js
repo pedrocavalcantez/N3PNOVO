@@ -15,6 +15,19 @@ function addFoodItem() {
   foodItem.querySelector(".food-min").value = "";
   foodItem.querySelector(".food-max").value = "";
 
+  // Reset nutritional info values
+  foodItem.querySelector(".food-quantity").textContent = "0";
+  foodItem.querySelector(".food-calories").textContent = "0";
+  foodItem.querySelector(".food-proteins").textContent = "0";
+  foodItem.querySelector(".food-carbs").textContent = "0";
+  foodItem.querySelector(".food-fats").textContent = "0";
+
+  // Hide the food info
+  const foodInfo = foodItem.querySelector(".food-info");
+  if (foodInfo) {
+    foodInfo.classList.add("d-none");
+  }
+
   // Clear and hide previous search results in the clone
   const searchResults = foodItem.querySelector(".search-results");
   if (searchResults) {
@@ -37,15 +50,15 @@ function addFoodItem() {
 
 // Remove a food item with animation
 function removeFoodItem(button) {
-  const foodItem = button.closest(".food-item");
-  const foodCode = foodItem.querySelector(".food-code").value;
+  const foodItem = button.closest('.food-item');
+  const foodCode = foodItem.querySelector('.food-code').value;
 
   // Remove from selectedFoods if it exists
   if (foodCode) {
     selectedFoods.delete(foodCode);
   }
 
-  const allItems = document.querySelectorAll(".food-item");
+  const allItems = document.querySelectorAll('.food-item');
   if (allItems.length > 1) {
     // Animate removal
     foodItem.style.transition = "all 0.3s ease-out";
@@ -55,16 +68,31 @@ function removeFoodItem(button) {
       foodItem.remove();
     }, 300);
   } else {
-    // If it's the last item, just clear the inputs
-    foodItem.querySelector(".food-code").value = "";
-    foodItem.querySelector(".food-min").value = "";
-    foodItem.querySelector(".food-max").value = "";
-    // Also clear any search-results
-    const results = foodItem.querySelector(".search-results");
+    // If it's the last item, clear all inputs and values
+    foodItem.querySelector('.food-code').value = "";
+    foodItem.querySelector('.food-min').value = "";
+    foodItem.querySelector('.food-max').value = "";
+    
+    // Reset nutritional values
+    foodItem.querySelector('.food-quantity').textContent = "0";
+    foodItem.querySelector('.food-calories').textContent = "0";
+    foodItem.querySelector('.food-proteins').textContent = "0";
+    foodItem.querySelector('.food-carbs').textContent = "0";
+    foodItem.querySelector('.food-fats').textContent = "0";
+    
+    // Hide nutritional info
+    const foodInfo = foodItem.querySelector('.food-info');
+    if (foodInfo) {
+      foodInfo.classList.add('d-none');
+    }
+
+    // Clear any search results
+    const results = foodItem.querySelector('.search-results');
     if (results) {
-      results.classList.add("d-none");
+      results.classList.add('d-none');
       results.innerHTML = "";
     }
+    
     // Clear from selectedFoods
     selectedFoods.clear();
   }
@@ -72,18 +100,32 @@ function removeFoodItem(button) {
 
 // Search for foods with improved feedback
 function searchFood(input) {
-  const group = input.closest(".input-group");
-  const searchResults = group ? group.querySelector(".search-results") : null;
+  let searchResults = document.querySelector("#global-search-results-calculator");
+  
+  // Se não existir, cria uma div global única para resultados
   if (!searchResults) {
-    console.error("Não achei .search-results relativo a esse input");
-    return;
+    searchResults = document.createElement('div');
+    searchResults.id = "global-search-results-calculator";
+    searchResults.className = "search-results position-absolute w-100 bg-white border rounded-bottom shadow-sm";
+    document.body.appendChild(searchResults);
   }
 
   const query = input.value.trim();
+
   if (query.length < 2) {
     searchResults.classList.add("d-none");
     return;
   }
+
+  const rect = input.getBoundingClientRect();
+
+  // Posiciona o dropdown global exatamente embaixo do input atual
+  searchResults.style.top = `${rect.bottom + window.scrollY}px`;
+  searchResults.style.left = `${rect.left + window.scrollX}px`;
+  searchResults.style.width = `${rect.width}px`;
+  searchResults.style.zIndex = 99999;
+  searchResults.innerHTML = "<div class='p-2'>Buscando...</div>";
+  searchResults.classList.remove("d-none");
 
   fetch(`/api/search_food?query=${encodeURIComponent(query)}`)
     .then((response) => response.json())
@@ -92,7 +134,7 @@ function searchFood(input) {
       if (Array.isArray(data) && data.length > 0) {
         data.forEach((food) => {
           const div = document.createElement("div");
-          div.className = "p-2 border-bottom";
+          div.className = "search-result p-2 border-bottom";
           div.style.cursor = "pointer";
           div.textContent = food.food_code;
           div.onclick = () => {
@@ -113,6 +155,20 @@ function searchFood(input) {
                     min: null,
                     max: null,
                   });
+
+                  // Atualiza as informações nutricionais
+                  const foodItem = input.closest('.food-item');
+                  const foodInfo = foodItem.querySelector('.food-info');
+                  
+                  // Atualiza os valores
+                  foodItem.querySelector('.food-quantity').textContent = foodData.quantity.toFixed(1);
+                  foodItem.querySelector('.food-calories').textContent = foodData.calories.toFixed(1);
+                  foodItem.querySelector('.food-proteins').textContent = foodData.proteins.toFixed(1);
+                  foodItem.querySelector('.food-carbs').textContent = foodData.carbs.toFixed(1);
+                  foodItem.querySelector('.food-fats').textContent = foodData.fats.toFixed(1);
+                  
+                  // Remove a classe d-none para mostrar as informações
+                  foodInfo.classList.remove('d-none');
                 } else {
                   showAlert(
                     foodData.error || "Erro no retorno da API",
@@ -127,16 +183,26 @@ function searchFood(input) {
           };
           searchResults.appendChild(div);
         });
-        searchResults.classList.remove("d-none");
       } else {
-        searchResults.classList.add("d-none");
+        searchResults.innerHTML =
+          "<div class='p-2 text-muted'>Nenhum alimento encontrado</div>";
       }
     })
     .catch((err) => {
       console.error("Error:", err);
-      searchResults.classList.add("d-none");
+      searchResults.innerHTML =
+        "<div class='p-2 text-danger'>Erro ao buscar alimentos</div>";
     });
+
+  // Fecha o dropdown ao clicar fora
+  document.addEventListener('click', function handler(e) {
+    if (!input.contains(e.target) && !searchResults.contains(e.target)) {
+      searchResults.classList.add("d-none");
+      document.removeEventListener('click', handler);
+    }
+  });
 }
+
 
 // Update tolerance value display
 function updateToleranceValue(value) {

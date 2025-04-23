@@ -10,8 +10,40 @@ block title %}Perfil - N3P{% endblock %} {% block content %}
           </h4>
         </div>
         <div class="card-body">
-          {{ render_form(form, url_for('auth.profile'), submit_text='Atualizar
-          Perfil') }}
+          <form method="POST" action="{{ url_for('auth.profile') }}" id="profileForm">
+            {{ form.hidden_tag() }}
+            <div class="mb-3">
+              {{ form.nome.label(class="form-label") }}
+              {{ form.nome(class="form-control") }}
+            </div>
+            <div class="mb-3">
+              {{ form.idade.label(class="form-label") }}
+              {{ form.idade(class="form-control") }}
+            </div>
+            <div class="mb-3">
+              {{ form.altura.label(class="form-label") }}
+              {{ form.altura(class="form-control", step="0.01", id="altura", pattern="[0-9]*[.,]?[0-9]*", inputmode="decimal") }}
+            </div>
+            <div class="mb-3">
+              {{ form.peso.label(class="form-label") }}
+              {{ form.peso(class="form-control", step="0.1", id="peso", pattern="[0-9]*[.,]?[0-9]*", inputmode="decimal") }}
+            </div>
+            <div class="mb-3">
+              {{ form.sexo.label(class="form-label") }}
+              {{ form.sexo(class="form-select") }}
+            </div>
+            <div class="mb-3">
+              {{ form.fator_atividade.label(class="form-label") }}
+              {{ form.fator_atividade(class="form-select") }}
+            </div>
+            <div class="mb-3">
+              {{ form.objetivo.label(class="form-label") }}
+              {{ form.objetivo(class="form-select") }}
+            </div>
+            <div class="d-grid">
+              {{ form.submit(class="btn btn-primary") }}
+            </div>
+          </form>
         </div>
       </div>
     </div>
@@ -98,58 +130,64 @@ block title %}Perfil - N3P{% endblock %} {% block content %}
             type="button"
             class="btn-close"
             data-bs-dismiss="modal"
+            aria-label="Close"
           ></button>
         </div>
         <div class="modal-body">
           <div class="mb-3">
-            <label for="calories_goal" class="form-label"
-              >Calorias Diárias</label
-            >
+            <label for="calories_goal" class="form-label">Calorias Diárias</label>
             <input
               type="number"
               class="form-control"
               id="calories_goal"
               name="calories_goal"
-              value="{{ user.calories_goal|int }}"
-              required
-            />
-          </div>
-
-          {% for macro, label, default in [('proteins', 'Proteínas', 30),
-          ('carbs', 'Carboidratos', 40), ('fats', 'Gorduras', 30)] %}
-          <div class="mb-3">
-            <label for="{{ macro }}_percentage" class="form-label">
-              {{ label }}: <span id="{{ macro }}_value">{{ default }}</span>%
-            </label>
-            <input
-              type="range"
-              class="form-range"
-              id="{{ macro }}_percentage"
-              name="{{ macro }}_percentage"
+              value="{{ user_goals.calories }}"
               min="0"
-              max="100"
-              value="{{ default }}"
               step="1"
-              required
             />
           </div>
-          {% endfor %}
-
-          <div class="alert alert-danger d-none" id="percentageError">
-            A soma das porcentagens deve ser igual a 100%
+          <div class="mb-3">
+            <label for="proteins_goal" class="form-label">Proteínas (g)</label>
+            <input
+              type="number"
+              class="form-control"
+              id="proteins_goal"
+              name="proteins_goal"
+              value="{{ user_goals.proteins }}"
+              min="0"
+              step="1"
+            />
+          </div>
+          <div class="mb-3">
+            <label for="carbs_goal" class="form-label">Carboidratos (g)</label>
+            <input
+              type="number"
+              class="form-control"
+              id="carbs_goal"
+              name="carbs_goal"
+              value="{{ user_goals.carbs }}"
+              min="0"
+              step="1"
+            />
+          </div>
+          <div class="mb-3">
+            <label for="fats_goal" class="form-label">Gorduras (g)</label>
+            <input
+              type="number"
+              class="form-control"
+              id="fats_goal"
+              name="fats_goal"
+              value="{{ user_goals.fats }}"
+              min="0"
+              step="1"
+            />
           </div>
         </div>
         <div class="modal-footer">
-          <button
-            type="button"
-            class="btn btn-secondary"
-            data-bs-dismiss="modal"
-          >
+          <button type="button" class="btn btn-secondary" data-bs-dismiss="modal">
             Cancelar
           </button>
-          <button type="button" class="btn btn-primary" id="saveGoals">
-            Salvar
-          </button>
+          <button type="submit" class="btn btn-primary">Salvar</button>
         </div>
       </form>
     </div>
@@ -161,5 +199,54 @@ block title %}Perfil - N3P{% endblock %} {% block content %}
   href="{{ url_for('static', filename='css/auth.css') }}"
 />
 {% endblock %} {% block extra_js %}
-<script src="{{ url_for('static', filename='js/profile.js') }}"></script>
+<script>
+document.addEventListener('DOMContentLoaded', function() {
+    const alturaInput = document.getElementById('altura');
+    const pesoInput = document.getElementById('peso');
+    const profileForm = document.getElementById('profileForm');
+
+    // Função para formatar altura
+    alturaInput.addEventListener('input', function(e) {
+        let value = e.target.value;
+        
+        // Se o valor for apenas 1 ou 2, adiciona o ponto
+        if (value === '1' || value === '2') {
+            e.target.value = value + '.';
+        }
+        
+        // Substitui vírgula por ponto
+        if (value.includes(',')) {
+            e.target.value = value.replace(',', '.');
+        }
+    });
+
+    // Função para formatar peso
+    pesoInput.addEventListener('input', function(e) {
+        let value = e.target.value;
+        // Substitui vírgula por ponto
+        if (value.includes(',')) {
+            e.target.value = value.replace(',', '.');
+        }
+    });
+
+    // Função para formatar os valores antes de enviar o formulário
+    profileForm.addEventListener('submit', function(e) {
+        // Formata altura
+        let altura = alturaInput.value;
+        if (altura.includes(',')) {
+            alturaInput.value = altura.replace(',', '.');
+        }
+        // Garante que a altura tenha pelo menos uma casa decimal
+        if (altura && !altura.includes('.')) {
+            alturaInput.value = altura + '.00';
+        }
+
+        // Formata peso
+        let peso = pesoInput.value;
+        if (peso.includes(',')) {
+            pesoInput.value = peso.replace(',', '.');
+        }
+    });
+});
+</script>
 {% endblock %}

@@ -18,8 +18,15 @@ def search_food():
     if len(query) < 2:
         return jsonify([])
 
-    # Search only in code field
-    foods = FoodData.query.filter(FoodData.code.ilike(f"%{query}%")).limit(10).all()
+    # First, search for elements that start with the query
+    foods_start = FoodData.query.filter(FoodData.code.ilike(f"{query}%")).limit(10).all()
+    
+    # If less than 10 results, search for elements that contain the query
+    if len(foods_start) < 10:
+        additional_foods = FoodData.query.filter(FoodData.code.ilike(f"%{query}%")).limit(10 - len(foods_start)).all()
+        foods = foods_start + additional_foods
+    else:
+        foods = foods_start
     # print([{"food_code": food.code, "qtd": food.quantity} for food in foods])
     return jsonify([{"food_code": food.code, "qtd": food.quantity} for food in foods])
 
@@ -558,3 +565,59 @@ def export_diet():
 
     except Exception as e:
         return jsonify({"error": str(e)}), 500
+
+
+@bp.route('/diets', methods=['POST'])
+@login_required
+def create_diet():
+    data = request.get_json()
+    name = data.get("name")
+    
+    if not name:
+        return jsonify({"error": "Nome da dieta é obrigatório"}), 400
+    
+    diet = Diet(name=name, user_id=current_user.id)
+    db.session.add(diet)
+    db.session.commit()
+    
+    return jsonify({
+        "success": True,
+        "name": diet.name
+    })
+
+@bp.route('/diets/<int:diet_id>', methods=['PUT'])
+@login_required
+def update_diet(diet_id):
+    diet = Diet.query.get_or_404(diet_id)
+    if diet.user_id != current_user.id:
+        return jsonify({"error": "Não autorizado"}), 403
+    
+    data = request.get_json()
+    name = data.get("name")
+    
+    if name:
+        diet.name = name
+        db.session.commit()
+    
+    return jsonify({
+        "success": True,
+        "name": diet.name
+    })
+
+@bp.route("/last_diet")
+@login_required
+def last_diet():
+    """Retorna a dieta mais recente do usuário logado"""
+    diet = (
+        Diet.query
+        .filter_by(user_id=current_user.id)
+        .order_by(Diet.created_at.desc())
+        .first()
+    )
+    if diet:
+        return jsonify(
+            {"success": True, "id": diet.id, "name": diet.name,
+             "meals_data": diet.meals_data}
+        )
+    # Nenhuma dieta salva ainda
+    return jsonify({"success": False, "error": "Nenhuma dieta encontrada"})

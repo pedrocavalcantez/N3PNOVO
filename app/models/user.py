@@ -15,6 +15,7 @@ class User(UserMixin, db.Model):
     email = db.Column(db.String(120), unique=True, nullable=False)
     password_hash = db.Column(db.String(128))
     created_at = db.Column(db.DateTime, default=datetime.utcnow)
+    updated_at = db.Column(db.DateTime, default=datetime.utcnow, onupdate=datetime.utcnow)
     nome = db.Column(db.String(100), nullable=False)
     idade = db.Column(db.Integer, nullable=False)
     altura = db.Column(db.Float, nullable=False)  # altura em metros
@@ -24,6 +25,7 @@ class User(UserMixin, db.Model):
     )  # 'M' para masculino, 'F' para feminino
     fator_atividade = db.Column(db.String(20), nullable=False)
     objetivo = db.Column(db.String(50), nullable=False)
+    admin = db.Column(db.Boolean, nullable=False, default=False)
 
     # Nutrition goals
     calories_goal = db.Column(db.Float, nullable=True)
@@ -101,21 +103,6 @@ class User(UserMixin, db.Model):
         objective_multiplier = self.get_objective_multiplier()
 
         return round(bmr * activity_multiplier * objective_multiplier)
-
-    # def update_goals(self):
-    #     """Update nutrition goals based on calculated values"""
-    #     # Calculate daily calories
-    #     self.calories_goal = self.calculate_daily_calories()
-
-    #     # Calculate macronutrient goals based on calories
-    #     # Proteins: 30% of calories (4 calories per gram)
-    #     self.proteins_goal = round((self.calories_goal * 0.30) / 4)
-
-    #     # Carbs: 40% of calories (4 calories per gram)
-    #     self.carbs_goal = round((self.calories_goal * 0.40) / 4)
-
-    #     # Fats: 30% of calories (9 calories per gram)
-    #     self.fats_goal = round((self.calories_goal * 0.30) / 9)
 
     def update_goals(
         self,
