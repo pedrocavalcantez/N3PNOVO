@@ -136,6 +136,45 @@ function initDashboard() {
   );
   Totals.updateDailyTotals();
 }
+async function exportToExcel() {
+  try {
+    // Collect all meal data
+    const mealsData = collectMealsData();
+
+    // Get the current date for the filename
+    const date = new Date().toISOString().split("T")[0];
+    const filename = `dieta_${date}.xlsx`;
+
+    // Make API call to get the Excel file
+    const response = await fetch("/api/export_diet", {
+      method: "POST",
+      headers: {
+        "Content-Type": "application/json",
+      },
+      body: JSON.stringify(mealsData),
+    });
+
+    if (!response.ok) {
+      throw new Error("Erro ao exportar dieta");
+    }
+
+    // Convert response to blob
+    const blob = await response.blob();
+
+    // Create download link and trigger download
+    const url = window.URL.createObjectURL(blob);
+    const a = document.createElement("a");
+    a.href = url;
+    a.download = filename;
+    document.body.appendChild(a);
+    a.click();
+    window.URL.revokeObjectURL(url);
+    document.body.removeChild(a);
+  } catch (error) {
+    console.error("Export Error:", error);
+    alert("Erro ao exportar dieta: " + error.message);
+  }
+}
 
 document.addEventListener("DOMContentLoaded", initDashboard);
 
@@ -144,4 +183,5 @@ window.Dashboard = {
   expandAllSections,
   initializeDashboardEvents,
   initDashboard,
+  exportToExcel,
 };
