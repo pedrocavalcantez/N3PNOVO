@@ -3,7 +3,7 @@ from flask import render_template, redirect, url_for, jsonify, request
 from flask_login import login_required, current_user
 from app import db
 from app.blueprints.main import bp
-from app.models import Diet, FoodData
+from app.models import Diet, FoodData, UserFood
 from app.constants import MEAL_TYPES, MACRO_TYPES
 from app.models.meal_template import MealTemplate
 from app.decorators import admin_required
@@ -116,7 +116,10 @@ def calculator():
 @login_required
 def meals():
     """Página para gerenciar refeições salvas"""
-    templates = MealTemplate.query.order_by(MealTemplate.meal_type, MealTemplate.name).all()
+    # Filtra apenas templates do usuário atual
+    templates = MealTemplate.query.filter_by(
+        user_id=current_user.id
+    ).order_by(MealTemplate.meal_type, MealTemplate.name).all()
     
     # Calcular valores nutricionais para cada template
     templates_with_nutrition = []
@@ -133,7 +136,15 @@ def meals():
                 
                 if food_code and quantity:
                     # Buscar dados nutricionais do alimento
-                    food_data = FoodData.query.filter_by(code=food_code).first()
+                    # First try user's custom foods
+                    food_data = UserFood.query.filter_by(
+                        code=food_code, user_id=current_user.id
+                    ).first()
+                    
+                    # If not found, try global foods
+                    if not food_data:
+                        food_data = FoodData.query.filter_by(code=food_code).first()
+                    
                     if food_data:
                         # Calcular valores proporcionais baseados na quantidade
                         ratio = quantity / food_data.quantity
@@ -159,10 +170,15 @@ def meals():
 @login_required
 def get_meal_templates():
     meal_type = request.args.get("meal_type")
+    # Filtra apenas templates do usuário atual ou templates globais (user_id is None)
+    query = MealTemplate.query.filter(
+        (MealTemplate.user_id == current_user.id) | (MealTemplate.user_id.is_(None))
+    )
+    
     if meal_type:
-        templates = MealTemplate.query.filter_by(meal_type=meal_type).all()
-    else:
-        templates = MealTemplate.query.all()
+        query = query.filter_by(meal_type=meal_type)
+    
+    templates = query.order_by(MealTemplate.created_at.desc()).all()
     return jsonify(
         {"success": True, "templates": [template.to_dict() for template in templates]}
     )
@@ -171,7 +187,11 @@ def get_meal_templates():
 @bp.route("/api/meal_templates/<int:template_id>")
 @login_required
 def get_meal_template(template_id):
-    template = MealTemplate.query.get_or_404(template_id)
+    # Só permite acessar templates do próprio usuário ou templates globais
+    template = MealTemplate.query.filter(
+        MealTemplate.id == template_id,
+        ((MealTemplate.user_id == current_user.id) | (MealTemplate.user_id.is_(None)))
+    ).first_or_404()
     return jsonify({"success": True, "template": template.to_dict()})
 
 
@@ -202,10 +222,12 @@ def save_meal_template():
         if not meal_type:
             return jsonify({"success": False, "error": "Tipo de refeição é obrigatório"}), 400
 
-        # Verificar se já existe um template com o mesmo nome e tipo de refeição
+        # Verificar se já existe um template com o mesmo nome e tipo de refeição para este usuário
         # Se existir, sobrescrever ao invés de criar um novo
         existing_template = MealTemplate.query.filter_by(
-            name=base_name, meal_type=meal_type
+            user_id=current_user.id,
+            name=base_name, 
+            meal_type=meal_type
         ).first()
 
         if existing_template:
@@ -218,6 +240,7 @@ def save_meal_template():
         else:
             # Criar novo template
             template = MealTemplate(
+                user_id=current_user.id,
                 name=base_name,
                 description=data.get("description", "").strip(),
                 meal_type=meal_type,
@@ -276,7 +299,11 @@ def update_meal_template(template_id):
 @login_required
 def delete_meal_template_user(template_id):
     """Permite usuários excluírem suas próprias refeições"""
-    template = MealTemplate.query.get_or_404(template_id)
+    # Só permite deletar templates do próprio usuário
+    template = MealTemplate.query.filter_by(
+        id=template_id,
+        user_id=current_user.id
+    ).first_or_404()
 
     try:
         db.session.delete(template)

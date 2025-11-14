@@ -9,12 +9,17 @@ app = create_app()
 
 
 # TODO
-# Salvar Refeição
+
 # Criar um Alimetno Novo (só para pessoa que cadastrou)
+# Alimentos favoritos
 # VERIFICACAO por email
 # Adicionar mais comidas que nao tem no banco de dados
+
+
+# Fazer um slider para as calorias
 # BUGSS
-# Alimentos Vindo Duplicados
+#Nao ta Exxportando excel 
+
 
 if __name__ == "__main__":
     app.run(debug=True)

@@ -2,7 +2,7 @@ from flask import jsonify, request, send_file
 from flask_login import login_required, current_user
 from app import db
 from app.blueprints.api import bp
-from app.models import Diet, FoodData
+from app.models import Diet, FoodData, UserFood
 from datetime import datetime
 import pandas as pd
 from io import BytesIO
@@ -18,30 +18,49 @@ def search_food():
     if len(query) < 2:
         return jsonify([])
 
-    # First, search for elements that start with the query
+    # Search in FoodData (global foods)
     foods_start = (
         FoodData.query.filter(FoodData.code.ilike(f"{query}%")).limit(10).all()
     )
 
-    # If less than 10 results, search for elements that contain the query
-    # Exclude foods that already matched the "starts with" query to avoid duplicates
     if len(foods_start) < 10:
-        # Get IDs of foods that already matched
         start_ids = [food.id for food in foods_start]
-        
         query_obj = FoodData.query.filter(FoodData.code.ilike(f"%{query}%"))
         if start_ids:
             query_obj = query_obj.filter(~FoodData.id.in_(start_ids))
-        
         additional_foods = query_obj.limit(10 - len(foods_start)).all()
         foods = foods_start + additional_foods
     else:
         foods = foods_start
     
-    # Deduplicate by food_code as a safety measure
+    # Search in UserFood (user's custom foods)
+    user_foods_start = (
+        UserFood.query.filter(
+            UserFood.user_id == current_user.id,
+            UserFood.code.ilike(f"{query}%")
+        ).limit(10).all()
+    )
+    
+    if len(user_foods_start) < 10:
+        user_start_ids = [food.id for food in user_foods_start]
+        user_query_obj = UserFood.query.filter(
+            UserFood.user_id == current_user.id,
+            UserFood.code.ilike(f"%{query}%")
+        )
+        if user_start_ids:
+            user_query_obj = user_query_obj.filter(~UserFood.id.in_(user_start_ids))
+        additional_user_foods = user_query_obj.limit(10 - len(user_foods_start)).all()
+        user_foods = user_foods_start + additional_user_foods
+    else:
+        user_foods = user_foods_start
+    
+    # Combine results (limit to 10 total)
+    all_foods = foods + user_foods
+    
+    # Deduplicate by food_code
     seen_codes = set()
     unique_foods = []
-    for food in foods:
+    for food in all_foods[:10]:
         if food.code not in seen_codes:
             seen_codes.add(food.code)
             unique_foods.append(food)
@@ -53,12 +72,30 @@ def search_food():
 @login_required
 def get_food_nutrition(code):
     try:
+        # First try to find in user's custom foods
+        user_food = UserFood.query.filter_by(
+            code=code, user_id=current_user.id
+        ).first()
+        
+        if user_food:
+            quantity = float(request.args.get("quantity", user_food.quantity))
+            ratio = quantity / user_food.quantity
+            return jsonify(
+                {
+                    "success": True,
+                    "food_code": user_food.code,
+                    "calories": user_food.calories * ratio,
+                    "proteins": user_food.proteins * ratio,
+                    "carbs": user_food.carbs * ratio,
+                    "fats": user_food.fats * ratio,
+                    "quantity": quantity,
+                }
+            )
+        
+        # If not found in custom foods, try global foods
         food = FoodData.query.filter_by(code=code).first()
         if food:
-            # Get quantity from query parameters, default to food's base quantity
             quantity = float(request.args.get("quantity", food.quantity))
-
-            # Calculate proportional nutritional values
             ratio = quantity / food.quantity
             return jsonify(
                 {
@@ -91,7 +128,34 @@ def add_food():
         if not all([code, quantity is not None, meal_type]):
             return jsonify({"success": False, "error": "Missing required fields"}), 400
 
-        # Get food data
+        # First try to find in user's custom foods
+        user_food = UserFood.query.filter_by(
+            code=code, user_id=current_user.id
+        ).first()
+        
+        if user_food:
+            # Calculate nutrition values based on quantity
+            ratio = quantity / user_food.quantity
+            nutrition = {
+                "calories": user_food.calories * ratio,
+                "proteins": user_food.proteins * ratio,
+                "carbs": user_food.carbs * ratio,
+                "fats": user_food.fats * ratio,
+            }
+            
+            return jsonify(
+                {
+                    "success": True,
+                    "food": {
+                        "id": user_food.id,
+                        "food_code": user_food.code,
+                        "quantity": quantity,
+                        **nutrition,
+                    },
+                }
+            )
+        
+        # If not found in custom foods, try global foods
         food = FoodData.query.filter_by(code=code).first()
 
         if not food:
@@ -212,7 +276,29 @@ def calculate_portions():
         # Get food data for all selected foods
         foods = []
         for food_item in foods_data:
-            food = FoodData.query.filter_by(code=food_item["code"]).first()
+            code = food_item["code"]
+            
+            # First try to find in user's custom foods
+            user_food = UserFood.query.filter_by(
+                code=code, user_id=current_user.id
+            ).first()
+            
+            if user_food:
+                foods.append(
+                    {
+                        "code": user_food.code,
+                        "calories_per_100g": 100 * user_food.calories / user_food.quantity,
+                        "proteins_per_100g": 100 * user_food.proteins / user_food.quantity,
+                        "carbs_per_100g": 100 * user_food.carbs / user_food.quantity,
+                        "fats_per_100g": 100 * user_food.fats / user_food.quantity,
+                        "min": food_item.get("min"),
+                        "max": food_item.get("max"),
+                    }
+                )
+                continue
+            
+            # If not found in custom foods, try global foods
+            food = FoodData.query.filter_by(code=code).first()
             if food:
                 foods.append(
                     {
@@ -638,6 +724,234 @@ def last_diet():
         )
     # Nenhuma dieta salva ainda
     return jsonify({"success": False, "error": "Nenhuma dieta encontrada"})
+
+
+@bp.route("/user_foods", methods=["GET"])
+@login_required
+def list_user_foods():
+    """Lista todos os alimentos personalizados do usuário"""
+    try:
+        foods = UserFood.query.filter_by(user_id=current_user.id).order_by(UserFood.code).all()
+        return jsonify({
+            "success": True,
+            "foods": [{
+                "id": food.id,
+                "code": food.code,
+                "name": food.name,
+                "quantity": food.quantity,
+                "calories": food.calories,
+                "proteins": food.proteins,
+                "carbs": food.carbs,
+                "fats": food.fats,
+                "created_at": food.created_at.isoformat() if food.created_at else None,
+            } for food in foods]
+        })
+    except Exception as e:
+        return jsonify({"success": False, "error": str(e)}), 500
+
+
+@bp.route("/user_foods", methods=["POST"])
+@login_required
+def create_user_food():
+    """Cria um novo alimento personalizado"""
+    try:
+        data = request.get_json()
+        
+        code = data.get("code", "").strip()
+        name = data.get("name", "").strip()
+        quantity = data.get("quantity")
+        proteins = data.get("proteins")
+        carbs = data.get("carbs")
+        fats = data.get("fats")
+        
+        # Validação: pelo menos um dos dois (código ou nome) deve ser preenchido
+        if not code and not name:
+            return jsonify({
+                "success": False,
+                "error": "Por favor, preencha pelo menos o código ou o nome do alimento"
+            }), 400
+        
+        # Se não tiver código, usa o nome como código
+        if not code:
+            code = name
+        # Se não tiver nome, usa o código como nome
+        if not name:
+            name = code
+        
+        # Validação dos campos obrigatórios
+        if quantity is None or proteins is None or carbs is None or fats is None:
+            return jsonify({
+                "success": False,
+                "error": "Quantidade, proteínas, carboidratos e gorduras são obrigatórios"
+            }), 400
+        
+        if quantity <= 0:
+            return jsonify({
+                "success": False,
+                "error": "A quantidade deve ser maior que zero"
+            }), 400
+        
+        # Calcula calorias automaticamente: Calorias = 4 × Proteínas + 4 × Carboidratos + 9 × Gorduras
+        calories = (4 * float(proteins)) + (4 * float(carbs)) + (9 * float(fats))
+        
+        # Verifica se já existe um alimento com o mesmo código para este usuário
+        existing = UserFood.query.filter_by(
+            user_id=current_user.id,
+            code=code
+        ).first()
+        
+        if existing:
+            return jsonify({
+                "success": False,
+                "error": f"Já existe um alimento com o código '{code}'"
+            }), 400
+        
+        # Cria o alimento
+        user_food = UserFood(
+            user_id=current_user.id,
+            code=code,
+            name=name,
+            quantity=float(quantity),
+            calories=round(calories, 1),
+            proteins=float(proteins),
+            carbs=float(carbs),
+            fats=float(fats)
+        )
+        
+        db.session.add(user_food)
+        db.session.commit()
+        
+        return jsonify({
+            "success": True,
+            "message": "Alimento criado com sucesso!",
+            "food": {
+                "id": user_food.id,
+                "code": user_food.code,
+                "name": user_food.name,
+                "quantity": user_food.quantity,
+                "calories": user_food.calories,
+                "proteins": user_food.proteins,
+                "carbs": user_food.carbs,
+                "fats": user_food.fats,
+            }
+        })
+    except Exception as e:
+        db.session.rollback()
+        return jsonify({"success": False, "error": str(e)}), 500
+
+
+@bp.route("/user_foods/<int:food_id>", methods=["PUT"])
+@login_required
+def update_user_food(food_id):
+    """Atualiza um alimento personalizado"""
+    try:
+        food = UserFood.query.filter_by(
+            id=food_id,
+            user_id=current_user.id
+        ).first_or_404()
+        
+        data = request.get_json()
+        
+        code = data.get("code", "").strip()
+        name = data.get("name", "").strip()
+        quantity = data.get("quantity")
+        proteins = data.get("proteins")
+        carbs = data.get("carbs")
+        fats = data.get("fats")
+        
+        # Validação: pelo menos um dos dois (código ou nome) deve ser preenchido
+        if not code and not name:
+            return jsonify({
+                "success": False,
+                "error": "Por favor, preencha pelo menos o código ou o nome do alimento"
+            }), 400
+        
+        # Se não tiver código, usa o nome como código
+        if not code:
+            code = name
+        # Se não tiver nome, usa o código como nome
+        if not name:
+            name = code
+        
+        # Validação dos campos obrigatórios
+        if quantity is None or proteins is None or carbs is None or fats is None:
+            return jsonify({
+                "success": False,
+                "error": "Quantidade, proteínas, carboidratos e gorduras são obrigatórios"
+            }), 400
+        
+        if quantity <= 0:
+            return jsonify({
+                "success": False,
+                "error": "A quantidade deve ser maior que zero"
+            }), 400
+        
+        # Calcula calorias automaticamente: Calorias = 4 × Proteínas + 4 × Carboidratos + 9 × Gorduras
+        calories = (4 * float(proteins)) + (4 * float(carbs)) + (9 * float(fats))
+        
+        # Verifica se o código já existe em outro alimento do mesmo usuário
+        if code != food.code:
+            existing = UserFood.query.filter_by(
+                user_id=current_user.id,
+                code=code
+            ).first()
+            
+            if existing:
+                return jsonify({
+                    "success": False,
+                    "error": f"Já existe um alimento com o código '{code}'"
+                }), 400
+        
+        # Atualiza o alimento
+        food.code = code
+        food.name = name
+        food.quantity = float(quantity)
+        food.calories = round(calories, 1)
+        food.proteins = float(proteins)
+        food.carbs = float(carbs)
+        food.fats = float(fats)
+        
+        db.session.commit()
+        
+        return jsonify({
+            "success": True,
+            "message": "Alimento atualizado com sucesso!",
+            "food": {
+                "id": food.id,
+                "code": food.code,
+                "name": food.name,
+                "quantity": food.quantity,
+                "calories": food.calories,
+                "proteins": food.proteins,
+                "carbs": food.carbs,
+                "fats": food.fats,
+            }
+        })
+    except Exception as e:
+        db.session.rollback()
+        return jsonify({"success": False, "error": str(e)}), 500
+
+
+@bp.route("/user_foods/<int:food_id>", methods=["DELETE"])
+@login_required
+def delete_user_food(food_id):
+    """Deleta um alimento personalizado"""
+    try:
+        food = UserFood.query.filter_by(
+            id=food_id,
+            user_id=current_user.id
+        ).first_or_404()
+        
+        db.session.delete(food)
+        db.session.commit()
+        
+        return jsonify({
+            "success": True,
+            "message": "Alimento deletado com sucesso!"
+        })
+    except Exception as e:
+        db.session.rollback()
+        return jsonify({"success": False, "error": str(e)}), 500
 
 
 @bp.route("/chatbot", methods=["POST"])

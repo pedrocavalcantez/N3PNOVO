@@ -10,39 +10,43 @@ block title %}Perfil - N3P{% endblock %} {% block content %}
           </h4>
         </div>
         <div class="card-body">
-          <form method="POST" action="{{ url_for('auth.profile') }}" id="profileForm">
+          <form
+            method="POST"
+            action="{{ url_for('auth.profile') }}"
+            id="profileForm"
+          >
             {{ form.hidden_tag() }}
             <div class="mb-3">
-              {{ form.nome.label(class="form-label") }}
-              {{ form.nome(class="form-control") }}
+              {{ form.nome.label(class="form-label") }} {{
+              form.nome(class="form-control") }}
             </div>
             <div class="mb-3">
-              {{ form.idade.label(class="form-label") }}
-              {{ form.idade(class="form-control") }}
+              {{ form.idade.label(class="form-label") }} {{
+              form.idade(class="form-control") }}
             </div>
             <div class="mb-3">
-              {{ form.altura.label(class="form-label") }}
-              {{ form.altura(class="form-control", step="0.01", id="altura", pattern="[0-9]*[.,]?[0-9]*", inputmode="decimal") }}
+              {{ form.altura.label(class="form-label") }} {{
+              form.altura(class="form-control", step="0.01", id="altura",
+              pattern="[0-9]*[.,]?[0-9]*", inputmode="decimal") }}
             </div>
             <div class="mb-3">
-              {{ form.peso.label(class="form-label") }}
-              {{ form.peso(class="form-control", step="0.1", id="peso", pattern="[0-9]*[.,]?[0-9]*", inputmode="decimal") }}
+              {{ form.peso.label(class="form-label") }} {{
+              form.peso(class="form-control", step="0.1", id="peso",
+              pattern="[0-9]*[.,]?[0-9]*", inputmode="decimal") }}
             </div>
             <div class="mb-3">
-              {{ form.sexo.label(class="form-label") }}
-              {{ form.sexo(class="form-select") }}
+              {{ form.sexo.label(class="form-label") }} {{
+              form.sexo(class="form-select") }}
             </div>
             <div class="mb-3">
-              {{ form.fator_atividade.label(class="form-label") }}
-              {{ form.fator_atividade(class="form-select") }}
+              {{ form.fator_atividade.label(class="form-label") }} {{
+              form.fator_atividade(class="form-select") }}
             </div>
             <div class="mb-3">
-              {{ form.objetivo.label(class="form-label") }}
-              {{ form.objetivo(class="form-select") }}
+              {{ form.objetivo.label(class="form-label") }} {{
+              form.objetivo(class="form-select") }}
             </div>
-            <div class="d-grid">
-              {{ form.submit(class="btn btn-primary") }}
-            </div>
+            <div class="d-grid">{{ form.submit(class="btn btn-primary") }}</div>
           </form>
         </div>
       </div>
@@ -135,7 +139,9 @@ block title %}Perfil - N3P{% endblock %} {% block content %}
         </div>
         <div class="modal-body">
           <div class="mb-3">
-            <label for="calories_goal" class="form-label">Calorias Diárias</label>
+            <label for="calories_goal" class="form-label"
+              >Calorias Diárias</label
+            >
             <input
               type="number"
               class="form-control"
@@ -184,7 +190,11 @@ block title %}Perfil - N3P{% endblock %} {% block content %}
           </div>
         </div>
         <div class="modal-footer">
-          <button type="button" class="btn btn-secondary" data-bs-dismiss="modal">
+          <button
+            type="button"
+            class="btn btn-secondary"
+            data-bs-dismiss="modal"
+          >
             Cancelar
           </button>
           <button type="submit" class="btn btn-primary">Salvar</button>
@@ -199,54 +209,65 @@ block title %}Perfil - N3P{% endblock %} {% block content %}
   href="{{ url_for('static', filename='css/auth.css') }}"
 />
 {% endblock %} {% block extra_js %}
+<script src="{{ url_for('static', filename='js/profile.js') }}"></script>
 <script>
-document.addEventListener('DOMContentLoaded', function() {
-    const alturaInput = document.getElementById('altura');
-    const pesoInput = document.getElementById('peso');
-    const profileForm = document.getElementById('profileForm');
+  document.addEventListener("DOMContentLoaded", function () {
+    const alturaInput = document.getElementById("altura");
+    const pesoInput = document.getElementById("peso");
+    const profileForm = document.getElementById("profileForm");
 
     // Função para formatar altura
-    alturaInput.addEventListener('input', function(e) {
+    if (alturaInput) {
+      alturaInput.addEventListener("input", function (e) {
         let value = e.target.value;
-        
+
         // Se o valor for apenas 1 ou 2, adiciona o ponto
-        if (value === '1' || value === '2') {
-            e.target.value = value + '.';
+        if (value === "1" || value === "2") {
+          e.target.value = value + ".";
         }
-        
+
         // Substitui vírgula por ponto
-        if (value.includes(',')) {
-            e.target.value = value.replace(',', '.');
+        if (value.includes(",")) {
+          e.target.value = value.replace(",", ".");
         }
-    });
+      });
+    }
 
     // Função para formatar peso
-    pesoInput.addEventListener('input', function(e) {
+    if (pesoInput) {
+      pesoInput.addEventListener("input", function (e) {
         let value = e.target.value;
         // Substitui vírgula por ponto
-        if (value.includes(',')) {
-            e.target.value = value.replace(',', '.');
+        if (value.includes(",")) {
+          e.target.value = value.replace(",", ".");
         }
-    });
+      });
+    }
 
     // Função para formatar os valores antes de enviar o formulário
-    profileForm.addEventListener('submit', function(e) {
+    if (profileForm) {
+      profileForm.addEventListener("submit", function (e) {
         // Formata altura
-        let altura = alturaInput.value;
-        if (altura.includes(',')) {
-            alturaInput.value = altura.replace(',', '.');
-        }
-        // Garante que a altura tenha pelo menos uma casa decimal
-        if (altura && !altura.includes('.')) {
-            alturaInput.value = altura + '.00';
+        if (alturaInput) {
+          let altura = alturaInput.value;
+          if (altura.includes(",")) {
+            alturaInput.value = altura.replace(",", ".");
+          }
+          // Garante que a altura tenha pelo menos uma casa decimal
+          if (altura && !altura.includes(".")) {
+            alturaInput.value = altura + ".00";
+          }
         }
 
         // Formata peso
-        let peso = pesoInput.value;
-        if (peso.includes(',')) {
-            pesoInput.value = peso.replace(',', '.');
+        if (pesoInput) {
+          let peso = pesoInput.value;
+          if (peso.includes(",")) {
+            pesoInput.value = peso.replace(",", ".");
+          }
         }
-    });
-});
+      });
+    }
+  });
 </script>
 {% endblock %}

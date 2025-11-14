@@ -238,5 +238,410 @@
     }
   }
 </script>
+
+<!-- Alimentos Personalizados -->
+<div class="row mt-4">
+  <div class="col-md-12">
+    <div class="card">
+      <div
+        class="card-header bg-white border-bottom-0 py-3 d-flex justify-content-between align-items-center"
+      >
+        <h4 class="mb-0">
+          <i class="fas fa-utensils me-2"></i>Meus Alimentos Personalizados
+        </h4>
+        <button
+          type="button"
+          class="btn btn-primary btn-sm"
+          data-bs-toggle="modal"
+          data-bs-target="#addFoodModal"
+          onclick="resetFoodForm()"
+        >
+          <i class="fas fa-plus me-1"></i>Adicionar Alimento
+        </button>
+      </div>
+      <div class="card-body">
+        <div id="userFoodsAlert"></div>
+        <div class="table-responsive">
+          <table class="table table-hover" id="userFoodsTable">
+            <thead>
+              <tr>
+                <th>Código</th>
+                <th>Nome</th>
+                <th>Quantidade (g)</th>
+                <th>Calorias</th>
+                <th>Proteínas (g)</th>
+                <th>Carboidratos (g)</th>
+                <th>Gorduras (g)</th>
+                <th>Ações</th>
+              </tr>
+            </thead>
+            <tbody id="userFoodsTableBody">
+              <tr>
+                <td colspan="8" class="text-center text-muted">
+                  <i class="fas fa-spinner fa-spin"></i> Carregando...
+                </td>
+              </tr>
+            </tbody>
+          </table>
+        </div>
+      </div>
+    </div>
+  </div>
+</div>
+
+<!-- Add/Edit Food Modal -->
+<div
+  class="modal fade"
+  id="addFoodModal"
+  tabindex="-1"
+  aria-labelledby="addFoodModalLabel"
+  aria-hidden="true"
+>
+  <div class="modal-dialog">
+    <div class="modal-content">
+      <form id="foodForm">
+        <div class="modal-header">
+          <h5 class="modal-title" id="addFoodModalLabel">Adicionar Alimento</h5>
+          <button
+            type="button"
+            class="btn-close"
+            data-bs-dismiss="modal"
+            aria-label="Close"
+          ></button>
+        </div>
+        <div class="modal-body">
+          <div id="foodFormAlert"></div>
+          <input type="hidden" id="foodId" name="food_id" />
+          <div class="mb-3">
+            <label for="foodCode" class="form-label">Código</label>
+            <input
+              type="text"
+              class="form-control"
+              id="foodCode"
+              name="code"
+              placeholder="Ex: MEU_ARROZ"
+            />
+            <small class="form-text text-muted"
+              >Código único para identificar o alimento (opcional se preencher o nome)</small
+            >
+          </div>
+          <div class="mb-3">
+            <label for="foodName" class="form-label">Nome</label>
+            <input
+              type="text"
+              class="form-control"
+              id="foodName"
+              name="name"
+              placeholder="Ex: Arroz Integral Personalizado"
+            />
+            <small class="form-text text-muted"
+              >Nome do alimento (opcional se preencher o código)</small
+            >
+          </div>
+          <div class="mb-3">
+            <label for="foodQuantity" class="form-label">Quantidade (g) *</label>
+            <input
+              type="number"
+              class="form-control"
+              id="foodQuantity"
+              name="quantity"
+              required
+              min="0.1"
+              step="0.1"
+              placeholder="100"
+            />
+            <small class="form-text text-muted"
+              >Quantidade base para os valores nutricionais</small
+            >
+          </div>
+          <div class="row">
+            <div class="col-md-6 mb-3">
+              <label for="foodProteins" class="form-label">Proteínas (g) *</label>
+              <input
+                type="number"
+                class="form-control"
+                id="foodProteins"
+                name="proteins"
+                required
+                min="0"
+                step="0.1"
+                placeholder="0"
+                oninput="calculateCalories()"
+              />
+            </div>
+            <div class="col-md-6 mb-3">
+              <label for="foodCarbs" class="form-label">Carboidratos (g) *</label>
+              <input
+                type="number"
+                class="form-control"
+                id="foodCarbs"
+                name="carbs"
+                required
+                min="0"
+                step="0.1"
+                placeholder="0"
+                oninput="calculateCalories()"
+              />
+            </div>
+          </div>
+          <div class="row">
+            <div class="col-md-6 mb-3">
+              <label for="foodFats" class="form-label">Gorduras (g) *</label>
+              <input
+                type="number"
+                class="form-control"
+                id="foodFats"
+                name="fats"
+                required
+                min="0"
+                step="0.1"
+                placeholder="0"
+                oninput="calculateCalories()"
+              />
+            </div>
+            <div class="col-md-6 mb-3">
+              <label for="foodCalories" class="form-label">Calorias (calculado automaticamente)</label>
+              <input
+                type="number"
+                class="form-control"
+                id="foodCalories"
+                name="calories"
+                readonly
+                min="0"
+                step="0.1"
+                placeholder="0"
+                style="background-color: #e9ecef;"
+              />
+              <small class="form-text text-muted"
+                >Calorias = 4 × Proteínas + 4 × Carboidratos + 9 × Gorduras</small
+              >
+            </div>
+          </div>
+        </div>
+        <div class="modal-footer">
+          <button type="button" class="btn btn-secondary" data-bs-dismiss="modal">
+            Cancelar
+          </button>
+          <button type="submit" class="btn btn-primary">Salvar</button>
+        </div>
+      </form>
+    </div>
+  </div>
+</div>
+
+<script>
+  // Gerenciamento de Alimentos Personalizados
+  let editingFoodId = null;
+
+  function showFoodAlert(message, type = "success") {
+    const alertDiv = document.getElementById("foodFormAlert");
+    alertDiv.innerHTML = `
+      <div class="alert alert-${type} alert-dismissible fade show" role="alert">
+        ${message}
+        <button type="button" class="btn-close" data-bs-dismiss="alert" aria-label="Close"></button>
+      </div>
+    `;
+    setTimeout(() => {
+      alertDiv.innerHTML = "";
+    }, 5000);
+  }
+
+  function showTableAlert(message, type = "success") {
+    const alertDiv = document.getElementById("userFoodsAlert");
+    alertDiv.innerHTML = `
+      <div class="alert alert-${type} alert-dismissible fade show" role="alert">
+        ${message}
+        <button type="button" class="btn-close" data-bs-dismiss="alert" aria-label="Close"></button>
+      </div>
+    `;
+    setTimeout(() => {
+      alertDiv.innerHTML = "";
+    }, 5000);
+  }
+
+  function resetFoodForm() {
+    editingFoodId = null;
+    document.getElementById("foodForm").reset();
+    document.getElementById("foodId").value = "";
+    document.getElementById("addFoodModalLabel").textContent = "Adicionar Alimento";
+    document.getElementById("foodCalories").value = "";
+  }
+
+  function calculateCalories() {
+    const proteins = parseFloat(document.getElementById("foodProteins").value) || 0;
+    const carbs = parseFloat(document.getElementById("foodCarbs").value) || 0;
+    const fats = parseFloat(document.getElementById("foodFats").value) || 0;
+    
+    // Fórmula: Calorias = 4 × Proteínas + 4 × Carboidratos + 9 × Gorduras
+    const calories = (4 * proteins) + (4 * carbs) + (9 * fats);
+    document.getElementById("foodCalories").value = calories.toFixed(1);
+  }
+
+  function loadUserFoods() {
+    fetch("/api/user_foods")
+      .then((res) => res.json())
+      .then((data) => {
+        const tbody = document.getElementById("userFoodsTableBody");
+        tbody.innerHTML = "";
+
+        if (data.success && data.foods.length > 0) {
+          data.foods.forEach((food) => {
+            const row = document.createElement("tr");
+            row.innerHTML = `
+              <td><code>${food.code}</code></td>
+              <td>${food.name}</td>
+              <td>${food.quantity}</td>
+              <td>${food.calories.toFixed(1)}</td>
+              <td>${food.proteins.toFixed(1)}</td>
+              <td>${food.carbs.toFixed(1)}</td>
+              <td>${food.fats.toFixed(1)}</td>
+              <td>
+                <button class="btn btn-sm btn-primary me-1" onclick="editFood(${food.id})" title="Editar">
+                  <i class="fas fa-edit"></i>
+                </button>
+                <button class="btn btn-sm btn-danger" onclick="deleteFood(${food.id})" title="Deletar">
+                  <i class="fas fa-trash"></i>
+                </button>
+              </td>
+            `;
+            tbody.appendChild(row);
+          });
+        } else {
+          tbody.innerHTML = `
+            <tr>
+              <td colspan="8" class="text-center text-muted">
+                Nenhum alimento personalizado cadastrado ainda.
+              </td>
+            </tr>
+          `;
+        }
+      })
+      .catch((err) => {
+        console.error("Erro ao carregar alimentos:", err);
+        document.getElementById("userFoodsTableBody").innerHTML = `
+          <tr>
+            <td colspan="8" class="text-center text-danger">
+              Erro ao carregar alimentos. Por favor, recarregue a página.
+            </td>
+          </tr>
+        `;
+      });
+  }
+
+  function editFood(foodId) {
+    fetch(`/api/user_foods`)
+      .then((res) => res.json())
+      .then((data) => {
+        if (data.success) {
+          const food = data.foods.find((f) => f.id === foodId);
+          if (food) {
+            editingFoodId = foodId;
+            document.getElementById("foodId").value = food.id;
+            document.getElementById("foodCode").value = food.code;
+            document.getElementById("foodName").value = food.name;
+            document.getElementById("foodQuantity").value = food.quantity;
+            document.getElementById("foodProteins").value = food.proteins;
+            document.getElementById("foodCarbs").value = food.carbs;
+            document.getElementById("foodFats").value = food.fats;
+            // Calcula calorias ao editar
+            calculateCalories();
+            document.getElementById("addFoodModalLabel").textContent = "Editar Alimento";
+
+            const modal = new bootstrap.Modal(document.getElementById("addFoodModal"));
+            modal.show();
+          }
+        }
+      })
+      .catch((err) => {
+        console.error("Erro ao carregar alimento:", err);
+        showTableAlert("Erro ao carregar alimento para edição.", "danger");
+      });
+  }
+
+  function deleteFood(foodId) {
+    if (!confirm("Tem certeza que deseja deletar este alimento?")) {
+      return;
+    }
+
+    fetch(`/api/user_foods/${foodId}`, {
+      method: "DELETE",
+    })
+      .then((res) => res.json())
+      .then((data) => {
+        if (data.success) {
+          showTableAlert(data.message || "Alimento deletado com sucesso!", "success");
+          loadUserFoods();
+        } else {
+          showTableAlert(data.error || "Erro ao deletar alimento.", "danger");
+        }
+      })
+      .catch((err) => {
+        console.error("Erro ao deletar alimento:", err);
+        showTableAlert("Erro ao deletar alimento.", "danger");
+      });
+  }
+
+  // Form submit handler
+  document.getElementById("foodForm").addEventListener("submit", (e) => {
+    e.preventDefault();
+
+    const code = document.getElementById("foodCode").value.trim();
+    const name = document.getElementById("foodName").value.trim();
+    
+    // Validação: pelo menos um dos dois (código ou nome) deve ser preenchido
+    if (!code && !name) {
+      showFoodAlert("Por favor, preencha pelo menos o código ou o nome do alimento.", "danger");
+      return;
+    }
+
+    // Calcula calorias antes de enviar
+    calculateCalories();
+
+    const formData = {
+      code: code || name, // Se não tiver código, usa o nome como código
+      name: name || code, // Se não tiver nome, usa o código como nome
+      quantity: parseFloat(document.getElementById("foodQuantity").value),
+      calories: parseFloat(document.getElementById("foodCalories").value),
+      proteins: parseFloat(document.getElementById("foodProteins").value),
+      carbs: parseFloat(document.getElementById("foodCarbs").value),
+      fats: parseFloat(document.getElementById("foodFats").value),
+    };
+
+    const foodId = document.getElementById("foodId").value;
+    const url = foodId ? `/api/user_foods/${foodId}` : "/api/user_foods";
+    const method = foodId ? "PUT" : "POST";
+
+    fetch(url, {
+      method: method,
+      headers: {
+        "Content-Type": "application/json",
+      },
+      body: JSON.stringify(formData),
+    })
+      .then((res) => res.json())
+      .then((data) => {
+        if (data.success) {
+          showFoodAlert(data.message || "Alimento salvo com sucesso!", "success");
+          loadUserFoods();
+          setTimeout(() => {
+            const modal = bootstrap.Modal.getInstance(document.getElementById("addFoodModal"));
+            modal.hide();
+            resetFoodForm();
+          }, 1000);
+        } else {
+          showFoodAlert(data.error || "Erro ao salvar alimento.", "danger");
+        }
+      })
+      .catch((err) => {
+        console.error("Erro ao salvar alimento:", err);
+        showFoodAlert("Erro ao salvar alimento. Por favor, tente novamente.", "danger");
+      });
+  });
+
+  // Carregar alimentos ao carregar a página
+  document.addEventListener("DOMContentLoaded", () => {
+    loadUserFoods();
+  });
+</script>
 {% endblock %}
 

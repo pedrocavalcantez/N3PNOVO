@@ -138,10 +138,22 @@ def profile():
 @login_required
 def update_goals():
     try:
-        calories_goal = float(request.form.get("calories_goal"))
-        proteins_percentage = float(request.form.get("proteins_percentage")) / 100
-        carbs_percentage = float(request.form.get("carbs_percentage")) / 100
-        fats_percentage = float(request.form.get("fats_percentage")) / 100
+        calories_goal = request.form.get("calories_goal")
+        proteins_percentage = request.form.get("proteins_percentage")
+        carbs_percentage = request.form.get("carbs_percentage")
+        fats_percentage = request.form.get("fats_percentage")
+
+        # Valida se os campos foram enviados
+        if not calories_goal or not proteins_percentage or not carbs_percentage or not fats_percentage:
+            return jsonify({
+                "success": False,
+                "message": "Todos os campos são obrigatórios."
+            }), 400
+
+        calories_goal = float(calories_goal)
+        proteins_percentage = float(proteins_percentage) / 100
+        carbs_percentage = float(carbs_percentage) / 100
+        fats_percentage = float(fats_percentage) / 100
 
         current_user.update_goals(
             calories_goal=calories_goal,
@@ -157,9 +169,12 @@ def update_goals():
     except ValueError as e:
         return jsonify({"success": False, "message": str(e)}), 400
     except Exception as e:
+        import traceback
+        print(f"Erro ao atualizar metas: {str(e)}")
+        print(traceback.format_exc())
         return jsonify(
             {
                 "success": False,
-                "message": "Erro ao atualizar metas nutricionais. Por favor, tente novamente.",
+                "message": f"Erro ao atualizar metas nutricionais: {str(e)}",
             }
         ), 500
