@@ -441,6 +441,42 @@ def list_daily_diets():
         return jsonify({"success": False, "error": str(e)}), 500
 
 
+@bp.route("/delete_diary_by_date", methods=["DELETE"])
+@login_required
+def delete_diary_by_date():
+    """Deleta um diário pela data"""
+    try:
+        date_str = request.args.get("date")
+        if not date_str:
+            return jsonify({"success": False, "error": "Data não fornecida"}), 400
+        
+        from datetime import datetime as dt
+        diet_date = dt.strptime(date_str, "%Y-%m-%d").date()
+        
+        # Busca o diário do usuário para esta data
+        diet = Diet.query.filter_by(
+            user_id=current_user.id,
+            date=diet_date
+        ).first()
+        
+        if not diet:
+            return jsonify({"success": False, "error": "Diário não encontrado"}), 404
+        
+        # Delete the diet
+        db.session.delete(diet)
+        db.session.commit()
+        
+        return jsonify({
+            "success": True,
+            "message": "Diário deletado com sucesso"
+        })
+    except ValueError:
+        return jsonify({"success": False, "error": "Formato de data inválido. Use YYYY-MM-DD"}), 400
+    except Exception as e:
+        db.session.rollback()
+        return jsonify({"success": False, "error": str(e)}), 500
+
+
 @bp.route("/delete_diet/<int:diet_id>", methods=["DELETE"])
 @login_required
 def delete_diet(diet_id):

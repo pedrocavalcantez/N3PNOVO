@@ -10,7 +10,7 @@ app = create_app()
 
 # TODO
 # DARK MODE
-# Alimentos favoritos
+# Alimentos favosritos
 # VERIFICACAO por email
 # Adicionar mais comidas que nao tem no banco de dados (do fatsecret)
 # Fazer um slider para as calorias
@@ -24,3 +24,4 @@ if __name__ == "__main__":
 
 # Alimentos que falta coloca:
 # chocolate sicao
+# pao frances sem miolo
