@@ -196,27 +196,72 @@ function loadMealTemplates(mealType) {
       container.innerHTML = "";
 
       data.templates.forEach(function (template) {
-        var foodNames = template.meals_data
+        var mealsData = template.meals_data || [];
+        var foodNames = mealsData
           .map(function (food) {
             return food.food_code;
           })
           .join(", ");
 
-        var button = document.createElement("button");
-        button.type = "button";
-        button.className = "list-group-item list-group-item-action";
-        button.onclick = function () {
+        var listItem = document.createElement("div");
+        listItem.className = "list-group-item";
+
+        var itemText = mealsData.length > 1 ? " itens" : " item";
+
+        // Criar elementos separadamente para melhor controle
+        var mainDiv = document.createElement("div");
+        mainDiv.className = "d-flex justify-content-between align-items-center";
+
+        var leftDiv = document.createElement("div");
+        leftDiv.className = "flex-grow-1";
+        leftDiv.style.cursor = "pointer";
+        leftDiv.onclick = function () {
           Food.addMealTemplate(mealType, template.id);
         };
-        button.innerHTML = `
-          <div class="d-flex justify-content-between align-items-center">
-            <div>
-              <h6 class="mb-1">${template.name}</h6>
-              <small class="text-muted">${foodNames}</small>
-            </div>
-          </div>
-        `;
-        container.appendChild(button);
+
+        var title = document.createElement("h6");
+        title.className = "mb-1";
+        title.textContent = template.name;
+
+        var description = document.createElement("small");
+        description.className = "text-muted";
+        description.textContent = foodNames;
+
+        leftDiv.appendChild(title);
+        leftDiv.appendChild(description);
+
+        var rightDiv = document.createElement("div");
+        rightDiv.className = "d-flex align-items-center";
+        rightDiv.style.gap = "8px";
+
+        var badge = document.createElement("span");
+        badge.className = "badge bg-primary rounded-pill";
+        badge.textContent = mealsData.length + itemText;
+
+        var deleteBtn = document.createElement("button");
+        deleteBtn.type = "button";
+        deleteBtn.className = "btn btn-sm btn-danger";
+        deleteBtn.style.marginLeft = "8px";
+        deleteBtn.style.flexShrink = "0";
+        deleteBtn.title = "Excluir refeição";
+        deleteBtn.onclick = function (e) {
+          e.stopPropagation();
+          e.preventDefault();
+          Food.deleteMealTemplate(mealType, template.id);
+        };
+
+        var icon = document.createElement("i");
+        icon.className = "fas fa-trash";
+        deleteBtn.appendChild(icon);
+
+        rightDiv.appendChild(badge);
+        rightDiv.appendChild(deleteBtn);
+
+        mainDiv.appendChild(leftDiv);
+        mainDiv.appendChild(rightDiv);
+
+        listItem.appendChild(mainDiv);
+        container.appendChild(listItem);
       });
     }
   };

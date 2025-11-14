@@ -24,17 +24,29 @@ def search_food():
     )
 
     # If less than 10 results, search for elements that contain the query
+    # Exclude foods that already matched the "starts with" query to avoid duplicates
     if len(foods_start) < 10:
-        additional_foods = (
-            FoodData.query.filter(FoodData.code.ilike(f"%{query}%"))
-            .limit(10 - len(foods_start))
-            .all()
-        )
+        # Get IDs of foods that already matched
+        start_ids = [food.id for food in foods_start]
+        
+        query_obj = FoodData.query.filter(FoodData.code.ilike(f"%{query}%"))
+        if start_ids:
+            query_obj = query_obj.filter(~FoodData.id.in_(start_ids))
+        
+        additional_foods = query_obj.limit(10 - len(foods_start)).all()
         foods = foods_start + additional_foods
     else:
         foods = foods_start
-    # print([{"food_code": food.code, "qtd": food.quantity} for food in foods])
-    return jsonify([{"food_code": food.code, "qtd": food.quantity} for food in foods])
+    
+    # Deduplicate by food_code as a safety measure
+    seen_codes = set()
+    unique_foods = []
+    for food in foods:
+        if food.code not in seen_codes:
+            seen_codes.add(food.code)
+            unique_foods.append(food)
+    
+    return jsonify([{"food_code": food.code, "qtd": food.quantity} for food in unique_foods])
 
 
 @bp.route("/food_nutrition/<code>")

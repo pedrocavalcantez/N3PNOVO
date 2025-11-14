@@ -112,6 +112,49 @@ def calculator():
     return render_template("main/calculator.html", MEAL_TYPES=MEAL_TYPES)
 
 
+@bp.route("/meals")
+@login_required
+def meals():
+    """Página para gerenciar refeições salvas"""
+    templates = MealTemplate.query.order_by(MealTemplate.meal_type, MealTemplate.name).all()
+    
+    # Calcular valores nutricionais para cada template
+    templates_with_nutrition = []
+    for template in templates:
+        total_calories = 0
+        total_proteins = 0
+        total_carbs = 0
+        total_fats = 0
+        
+        if template.meals_data:
+            for food_item in template.meals_data:
+                food_code = food_item.get("food_code")
+                quantity = food_item.get("quantity", 0)
+                
+                if food_code and quantity:
+                    # Buscar dados nutricionais do alimento
+                    food_data = FoodData.query.filter_by(code=food_code).first()
+                    if food_data:
+                        # Calcular valores proporcionais baseados na quantidade
+                        ratio = quantity / food_data.quantity
+                        total_calories += food_data.calories * ratio
+                        total_proteins += food_data.proteins * ratio
+                        total_carbs += food_data.carbs * ratio
+                        total_fats += food_data.fats * ratio
+        
+        templates_with_nutrition.append({
+            "template": template,
+            "nutrition": {
+                "calories": round(total_calories, 1),
+                "proteins": round(total_proteins, 1),
+                "carbs": round(total_carbs, 1),
+                "fats": round(total_fats, 1),
+            }
+        })
+    
+    return render_template("main/meals.html", templates_with_nutrition=templates_with_nutrition, MEAL_TYPES=MEAL_TYPES)
+
+
 @bp.route("/api/meal_templates")
 @login_required
 def get_meal_templates():
@@ -139,6 +182,53 @@ def meal_templates():
     return render_template(
         "admin/meal_templates.html", MEAL_TYPES=MEAL_TYPES, MACRO_TYPES=MACRO_TYPES
     )
+
+
+@bp.route("/api/save_meal_template", methods=["POST"])
+@login_required
+def save_meal_template():
+    """Permite usuários salvarem suas próprias refeições como templates"""
+    data = request.get_json()
+
+    if not data:
+        return jsonify({"success": False, "error": "No data provided"}), 400
+
+    try:
+        base_name = data.get("name", "").strip()
+        if not base_name:
+            return jsonify({"success": False, "error": "Nome da refeição é obrigatório"}), 400
+
+        meal_type = data.get("meal_type")
+        if not meal_type:
+            return jsonify({"success": False, "error": "Tipo de refeição é obrigatório"}), 400
+
+        # Verificar se já existe um template com o mesmo nome e tipo de refeição
+        # Se existir, sobrescrever ao invés de criar um novo
+        existing_template = MealTemplate.query.filter_by(
+            name=base_name, meal_type=meal_type
+        ).first()
+
+        if existing_template:
+            # Atualizar template existente
+            existing_template.description = data.get("description", "").strip()
+            existing_template.meals_data = data.get("meals_data", [])
+            existing_template.updated_at = datetime.utcnow()
+            db.session.commit()
+            return jsonify({"success": True, "template": existing_template.to_dict(), "updated": True})
+        else:
+            # Criar novo template
+            template = MealTemplate(
+                name=base_name,
+                description=data.get("description", "").strip(),
+                meal_type=meal_type,
+                meals_data=data.get("meals_data", []),
+            )
+            db.session.add(template)
+            db.session.commit()
+            return jsonify({"success": True, "template": template.to_dict(), "updated": False})
+    except Exception as e:
+        db.session.rollback()
+        return jsonify({"success": False, "error": str(e)}), 400
 
 
 @bp.route("/api/meal_templates", methods=["POST"])
@@ -177,6 +267,21 @@ def update_meal_template(template_id):
 
         db.session.commit()
         return jsonify({"success": True, "template": template.to_dict()})
+    except Exception as e:
+        db.session.rollback()
+        return jsonify({"success": False, "error": str(e)}), 400
+
+
+@bp.route("/api/delete_meal_template/<int:template_id>", methods=["DELETE"])
+@login_required
+def delete_meal_template_user(template_id):
+    """Permite usuários excluírem suas próprias refeições"""
+    template = MealTemplate.query.get_or_404(template_id)
+
+    try:
+        db.session.delete(template)
+        db.session.commit()
+        return jsonify({"success": True})
     except Exception as e:
         db.session.rollback()
         return jsonify({"success": False, "error": str(e)}), 400

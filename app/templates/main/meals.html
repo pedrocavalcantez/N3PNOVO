@@ -1,0 +1,242 @@
+{% extends "base.html" %} {% block title %}Refeições{% endblock %} {% block content
+%}
+<div class="row mb-4">
+  <div class="col-md-12">
+    <div class="d-flex justify-content-between align-items-center">
+      <h2><i class="fas fa-utensils me-2"></i>Minhas Refeições</h2>
+    </div>
+  </div>
+</div>
+
+<div class="row">
+  <div class="col-md-12">
+    <div class="card">
+      <div class="card-header">
+        <h5 class="mb-0">Todas as Refeições Salvas</h5>
+      </div>
+      <div class="card-body">
+        {% if templates_with_nutrition %}
+        <div class="table-responsive">
+          <table class="table table-hover">
+            <thead>
+              <tr>
+                <th>Tipo de Refeição</th>
+                <th>Nome</th>
+                <th>Descrição</th>
+                <th>Alimentos</th>
+                <th>Calorias</th>
+                <th>Proteínas</th>
+                <th>Carboidratos</th>
+                <th>Gorduras</th>
+                <th>Data de Criação</th>
+                <th style="width: 100px">Ações</th>
+              </tr>
+            </thead>
+            <tbody>
+              {% for item in templates_with_nutrition %}
+              {% set template = item.template %}
+              {% set nutrition = item.nutrition %}
+              <tr id="meal-row-{{ template.id }}">
+                <td>
+                  <span class="badge bg-primary"
+                    >{{ MEAL_TYPES.get(template.meal_type, template.meal_type) }}</span
+                  >
+                </td>
+                <td><strong>{{ template.name }}</strong></td>
+                <td>
+                  <small class="text-muted"
+                    >{{ template.description or '-' }}</small
+                  >
+                </td>
+                <td>
+                  {% if template.meals_data %}
+                  <span class="badge bg-info"
+                    >{{ template.meals_data|length }} alimento(s)</span
+                  >
+                  <br />
+                  <small class="text-muted">
+                    {% for food in template.meals_data[:3] %}
+                    {{ food.food_code }}{% if not loop.last %}, {% endif %}
+                    {% endfor %} {% if template.meals_data|length > 3 %}...
+                    {% endif %}
+                  </small>
+                  {% else %}
+                  <span class="text-muted">Nenhum alimento</span>
+                  {% endif %}
+                </td>
+                <td>
+                  <strong class="text-primary">{{ nutrition.calories }}</strong>
+                  <small class="text-muted"> kcal</small>
+                </td>
+                <td>
+                  <strong class="text-success">{{ nutrition.proteins }}g</strong>
+                </td>
+                <td>
+                  <strong class="text-warning">{{ nutrition.carbs }}g</strong>
+                </td>
+                <td>
+                  <strong class="text-danger">{{ nutrition.fats }}g</strong>
+                </td>
+                <td>
+                  <small class="text-muted"
+                    >{{ template.created_at.strftime('%d/%m/%Y %H:%M') if
+                    template.created_at else '-' }}</small
+                  >
+                </td>
+                <td>
+                  <button
+                    type="button"
+                    class="btn btn-sm btn-danger"
+                    onclick="deleteMealTemplate({{ template.id }})"
+                    title="Excluir refeição"
+                    id="delete-btn-{{ template.id }}"
+                  >
+                    <i class="fas fa-trash"></i>
+                  </button>
+                </td>
+              </tr>
+              {% endfor %}
+            </tbody>
+          </table>
+        </div>
+        {% else %}
+        <div class="alert alert-info text-center">
+          <i class="fas fa-info-circle me-2"></i>
+          Você ainda não salvou nenhuma refeição.
+        </div>
+        {% endif %}
+      </div>
+    </div>
+  </div>
+</div>
+
+<!-- Modal de Confirmação de Exclusão -->
+<div class="modal fade" id="deleteConfirmModal" tabindex="-1" aria-hidden="true">
+  <div class="modal-dialog">
+    <div class="modal-content">
+      <div class="modal-header">
+        <h5 class="modal-title">
+          <i class="fas fa-exclamation-triangle text-warning me-2"></i>
+          Confirmar Exclusão
+        </h5>
+        <button
+          type="button"
+          class="btn-close"
+          data-bs-dismiss="modal"
+          aria-label="Close"
+        ></button>
+      </div>
+      <div class="modal-body">
+        <p>Tem certeza que deseja excluir esta refeição?</p>
+        <p class="text-muted small mb-0">Esta ação não pode ser desfeita.</p>
+      </div>
+      <div class="modal-footer">
+        <button
+          type="button"
+          class="btn btn-secondary"
+          data-bs-dismiss="modal"
+        >
+          Cancelar
+        </button>
+        <button
+          type="button"
+          class="btn btn-danger"
+          id="confirmDeleteBtn"
+        >
+          <i class="fas fa-trash me-1"></i>Excluir
+        </button>
+      </div>
+    </div>
+  </div>
+</div>
+
+<script>
+  let currentTemplateId = null;
+  let deleteModal = null;
+
+  // Inicializar modal quando a página carregar
+  document.addEventListener("DOMContentLoaded", function () {
+    const modalElement = document.getElementById("deleteConfirmModal");
+    if (modalElement) {
+      deleteModal = new bootstrap.Modal(modalElement);
+      
+      // Handler para o botão de confirmação
+      document.getElementById("confirmDeleteBtn").addEventListener("click", function () {
+        if (currentTemplateId !== null) {
+          performDelete(currentTemplateId);
+          deleteModal.hide();
+        }
+      });
+    }
+  });
+
+  function deleteMealTemplate(templateId) {
+    currentTemplateId = templateId;
+    if (deleteModal) {
+      deleteModal.show();
+    } else {
+      // Fallback se o modal não estiver inicializado
+      if (confirm("Tem certeza que deseja excluir esta refeição?")) {
+        performDelete(templateId);
+      }
+    }
+  }
+
+  async function performDelete(templateId) {
+    // Desabilitar o botão e mostrar feedback visual
+    const deleteBtn = document.getElementById(`delete-btn-${templateId}`);
+    const row = document.getElementById(`meal-row-${templateId}`);
+    
+    if (deleteBtn) {
+      deleteBtn.disabled = true;
+      deleteBtn.innerHTML = '<i class="fas fa-spinner fa-spin"></i>';
+    }
+
+    try {
+      const response = await fetch(`/api/delete_meal_template/${templateId}`, {
+        method: "DELETE",
+      });
+      const data = await response.json();
+
+      if (data.success) {
+        // Remover a linha da tabela com animação suave
+        if (row) {
+          row.style.transition = "opacity 0.3s ease-out";
+          row.style.opacity = "0";
+          setTimeout(() => {
+            row.remove();
+            
+            // Verificar se não há mais refeições e mostrar mensagem
+            const tbody = document.querySelector("tbody");
+            if (tbody && tbody.children.length === 0) {
+              const table = document.querySelector(".table-responsive");
+              if (table) {
+                table.innerHTML = `
+                  <div class="alert alert-info text-center">
+                    <i class="fas fa-info-circle me-2"></i>
+                    Você ainda não salvou nenhuma refeição.
+                  </div>
+                `;
+              }
+            }
+          }, 300);
+        }
+      } else {
+        throw new Error(data.error || "Erro ao excluir refeição");
+      }
+    } catch (error) {
+      console.error("Erro ao excluir refeição:", error);
+      alert("Erro ao excluir refeição: " + (error.message || "Erro desconhecido"));
+      
+      // Restaurar o botão em caso de erro
+      if (deleteBtn) {
+        deleteBtn.disabled = false;
+        deleteBtn.innerHTML = '<i class="fas fa-trash"></i>';
+      }
+    } finally {
+      currentTemplateId = null;
+    }
+  }
+</script>
+{% endblock %}
+

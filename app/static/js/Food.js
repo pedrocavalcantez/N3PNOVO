@@ -94,8 +94,216 @@ class Food {
       alert("Erro ao adicionar template: " + error.message);
     }
   }
+  static async deleteMealTemplate(mealType, templateId) {
+    if (!confirm("Tem certeza que deseja excluir esta refeição?")) {
+      return;
+    }
+
+    try {
+      const response = await makeDietApiCall(
+        `/api/delete_meal_template/${templateId}`,
+        {
+          method: "DELETE",
+        }
+      );
+
+      if (response.success) {
+        alert("Refeição excluída com sucesso!");
+        // Recarregar a lista de templates
+        if (typeof loadMealTemplates === "function") {
+          loadMealTemplates(mealType);
+        }
+      } else {
+        throw new Error(response.error || "Erro ao excluir refeição");
+      }
+    } catch (error) {
+      Food.logError(error, "Erro ao excluir refeição");
+      alert(
+        "Erro ao excluir refeição: " + (error.message || "Erro desconhecido")
+      );
+    }
+  }
   static setupFoodRow(food = null, mealType = null, isFromTemplate = false) {
     return new Food(food, mealType).setupRow(isFromTemplate);
+  }
+  static async saveCurrentMeal(mealType) {
+    const tbody = document.querySelector(`#${mealType}-foods`);
+    if (!tbody) {
+      Food.logError(
+        new Error("Tabela de alimentos não encontrada"),
+        "Erro ao salvar refeição"
+      );
+      return;
+    }
+
+    // Coletar todos os alimentos da refeição atual
+    const rows = tbody.querySelectorAll("tr:not(.table-secondary)");
+    const mealsData = [];
+
+    for (const row of rows) {
+      // Pular linhas sem ID e sem conteúdo
+      if (!row.id && row.cells.length === 0) {
+        continue;
+      }
+
+      let foodCode = null;
+      let quantity = null;
+
+      const cells = row.cells;
+
+      // Primeiro, tentar pegar dos inputs (modo edição/input)
+      const foodCodeInput = row.querySelector(".food-code");
+      const quantityInput = row.querySelector(".quantity");
+
+      if (foodCodeInput) {
+        // Modo input - pegar do value (prioridade) ou textContent
+        foodCode =
+          foodCodeInput.value?.trim() || foodCodeInput.textContent?.trim();
+      }
+
+      if (quantityInput) {
+        // Modo input - pegar do value (prioridade) ou textContent
+        const qtyValue = quantityInput.value || quantityInput.textContent;
+        if (qtyValue) {
+          quantity = parseFloat(qtyValue.toString().replace("g", "").trim());
+        }
+      }
+
+      // Se não encontrou nos inputs, pegar diretamente do texto das células (modo visualização)
+      // Isso acontece quando o alimento já foi salvo e está em modo visualização
+      if (cells && cells.length >= 2) {
+        // Primeira célula: código do alimento
+        if (!foodCode) {
+          // Tentar pegar do texto direto da célula (modo visualização)
+          // A célula pode conter apenas texto ou um input-group
+          const cell0 = cells[0];
+          if (cell0) {
+            // Primeiro, verificar se há um input dentro
+            const innerInput = cell0.querySelector(".food-code");
+            if (innerInput) {
+              foodCode =
+                innerInput.value?.trim() || innerInput.textContent?.trim();
+            }
+
+            // Se não encontrou no input, pegar do texto direto da célula
+            if (!foodCode) {
+              foodCode = cell0.textContent?.trim() || cell0.innerText?.trim();
+              // Remover qualquer HTML que possa estar presente
+              if (foodCode) {
+                foodCode = foodCode.replace(/\s+/g, " ").trim();
+              }
+            }
+          }
+        }
+
+        // Segunda célula: quantidade
+        if (isNaN(quantity) || quantity <= 0) {
+          const cell1 = cells[1];
+          if (cell1) {
+            // Primeiro, verificar se há um input dentro
+            const innerInput = cell1.querySelector(".quantity");
+            if (innerInput) {
+              const qtyValue = innerInput.value || innerInput.textContent;
+              if (qtyValue) {
+                quantity = parseFloat(
+                  qtyValue.toString().replace("g", "").trim()
+                );
+              }
+            }
+
+            // Se não encontrou no input, pegar do texto direto da célula
+            if (isNaN(quantity) || quantity <= 0) {
+              let quantityText =
+                cell1.textContent?.trim() || cell1.innerText?.trim();
+              if (quantityText) {
+                // Remover "g" e espaços extras
+                quantityText = quantityText.replace(/g/gi, "").trim();
+                quantity = parseFloat(quantityText);
+              }
+            }
+          }
+        }
+      }
+
+      // Adicionar se tiver código e quantidade válidos
+      if (foodCode && !isNaN(quantity) && quantity > 0) {
+        mealsData.push({
+          food_code: foodCode,
+          quantity: quantity,
+        });
+      } else {
+        // Debug: logar linhas que não foram coletadas
+        console.log("Linha não coletada:", {
+          rowId: row.id,
+          hasCells: cells && cells.length,
+          foodCode,
+          quantity,
+          cell0Text: cells?.[0]?.textContent,
+          cell1Text: cells?.[1]?.textContent,
+          hasInputs: !!(foodCodeInput || quantityInput),
+        });
+      }
+    }
+
+    console.log("Alimentos coletados:", mealsData);
+
+    if (mealsData.length === 0) {
+      alert("Adicione pelo menos um alimento antes de salvar a refeição.");
+      return;
+    }
+
+    // Obter nome e descrição do modal
+    const nameInput = document.getElementById(`mealName-${mealType}`);
+    const descriptionInput = document.getElementById(
+      `mealDescription-${mealType}`
+    );
+
+    if (!nameInput || !nameInput.value.trim()) {
+      alert("Por favor, informe um nome para a refeição.");
+      nameInput?.focus();
+      return;
+    }
+
+    const mealName = nameInput.value.trim();
+    const mealDescription = descriptionInput?.value?.trim() || "";
+
+    try {
+      const response = await makeDietApiCall("/api/save_meal_template", {
+        method: "POST",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify({
+          name: mealName,
+          description: mealDescription,
+          meal_type: mealType,
+          meals_data: mealsData,
+        }),
+      });
+
+      if (response.success) {
+        const message = response.updated
+          ? "Refeição atualizada com sucesso!"
+          : "Refeição salva com sucesso!";
+        alert(message);
+        // Fechar o modal
+        const modal = document.querySelector(`#saveMealModal-${mealType}`);
+        if (modal) {
+          const bsModal = bootstrap.Modal.getInstance(modal);
+          if (bsModal) {
+            bsModal.hide();
+          }
+        }
+        // Limpar o formulário
+        nameInput.value = "";
+        if (descriptionInput) descriptionInput.value = "";
+      } else {
+        throw new Error(response.error || "Erro ao salvar refeição");
+      }
+    } catch (error) {
+      Food.logError(error, "Erro ao salvar refeição");
+      alert(
+        "Erro ao salvar refeição: " + (error.message || "Erro desconhecido")
+      );
+    }
   }
   static async saveFood(button) {
     const row = button.closest("tr");
@@ -158,66 +366,86 @@ class Food {
     }
   }
   static async searchFood(input) {
-    let searchResults = document.querySelector("#global-search-results");
-    if (!searchResults) {
-      searchResults = document.createElement("div");
-      searchResults.id = "global-search-results";
-      searchResults.className =
-        "search-results position-absolute w-100 bg-white border rounded-bottom shadow-sm";
-      document.body.appendChild(searchResults);
+    // Clear any existing timeout to debounce the search
+    if (Food._searchTimeout) {
+      clearTimeout(Food._searchTimeout);
     }
 
-    const query = input.value.trim();
-    if (query.length < 2) {
-      searchResults.classList.add("d-none");
-      return;
-    }
+    // Debounce: wait 300ms after user stops typing
+    Food._searchTimeout = setTimeout(async () => {
+      let searchResults = document.querySelector("#global-search-results");
+      if (!searchResults) {
+        searchResults = document.createElement("div");
+        searchResults.id = "global-search-results";
+        searchResults.className =
+          "search-results position-absolute w-100 bg-white border rounded-bottom shadow-sm";
+        document.body.appendChild(searchResults);
+      }
 
-    const rect = input.getBoundingClientRect();
-    searchResults.style.top = `${rect.bottom + window.scrollY}px`;
-    searchResults.style.left = `${rect.left + window.scrollX}px`;
-    searchResults.style.width = `${rect.width}px`;
-    searchResults.style.zIndex = "99999";
-    searchResults.innerHTML = "<div class='p-2'>Buscando...</div>";
-    searchResults.classList.remove("d-none");
-
-    try {
-      const data = await makeDietApiCall(
-        `/api/search_food?query=${encodeURIComponent(query)}`
-      );
-      searchResults.innerHTML = "";
-      if (!Array.isArray(data)) throw new Error("Formato de resposta inválido");
-      if (data.length === 0) {
-        searchResults.innerHTML =
-          "<div class='p-2 text-muted'>Nenhum alimento encontrado</div>";
+      const query = input.value.trim();
+      if (query.length < 2) {
+        searchResults.classList.add("d-none");
         return;
       }
-      data.forEach((food) => {
-        const div = document.createElement("div");
-        div.className = "search-result p-2 border-bottom";
-        div.textContent = food.food_code;
-        div.onclick = () => {
-          Food.selectFood(input, food);
-          searchResults.classList.add("d-none");
-        };
-        searchResults.appendChild(div);
-      });
-    } catch (error) {
-      Food.logError(error, "Erro ao buscar alimentos");
-      searchResults.innerHTML = `<div class='p-2 text-danger'>Erro: ${
-        error.message || "Erro desconhecido"
-      }</div>`;
-    }
 
-    // Evita múltiplos listeners
-    document.removeEventListener("click", Food._closeSearchHandler);
-    Food._closeSearchHandler = (e) => {
-      if (!input.contains(e.target) && !searchResults.contains(e.target)) {
-        searchResults.classList.add("d-none");
-        document.removeEventListener("click", Food._closeSearchHandler);
+      const rect = input.getBoundingClientRect();
+      searchResults.style.top = `${rect.bottom + window.scrollY}px`;
+      searchResults.style.left = `${rect.left + window.scrollX}px`;
+      searchResults.style.width = `${rect.width}px`;
+      searchResults.style.zIndex = "99999";
+      searchResults.innerHTML = "<div class='p-2'>Buscando...</div>";
+      searchResults.classList.remove("d-none");
+
+      try {
+        const data = await makeDietApiCall(
+          `/api/search_food?query=${encodeURIComponent(query)}`
+        );
+        searchResults.innerHTML = "";
+        if (!Array.isArray(data))
+          throw new Error("Formato de resposta inválido");
+        if (data.length === 0) {
+          searchResults.innerHTML =
+            "<div class='p-2 text-muted'>Nenhum alimento encontrado</div>";
+          return;
+        }
+
+        // Deduplicate results on frontend as additional safety measure
+        const seenCodes = new Set();
+        const uniqueData = data.filter((food) => {
+          if (seenCodes.has(food.food_code)) {
+            return false;
+          }
+          seenCodes.add(food.food_code);
+          return true;
+        });
+
+        uniqueData.forEach((food) => {
+          const div = document.createElement("div");
+          div.className = "search-result p-2 border-bottom";
+          div.textContent = food.food_code;
+          div.onclick = () => {
+            Food.selectFood(input, food);
+            searchResults.classList.add("d-none");
+          };
+          searchResults.appendChild(div);
+        });
+      } catch (error) {
+        Food.logError(error, "Erro ao buscar alimentos");
+        searchResults.innerHTML = `<div class='p-2 text-danger'>Erro: ${
+          error.message || "Erro desconhecido"
+        }</div>`;
       }
-    };
-    document.addEventListener("click", Food._closeSearchHandler);
+
+      // Evita múltiplos listeners
+      document.removeEventListener("click", Food._closeSearchHandler);
+      Food._closeSearchHandler = (e) => {
+        if (!input.contains(e.target) && !searchResults.contains(e.target)) {
+          searchResults.classList.add("d-none");
+          document.removeEventListener("click", Food._closeSearchHandler);
+        }
+      };
+      document.addEventListener("click", Food._closeSearchHandler);
+    }, 300);
   }
 
   static selectFood(input, food) {
@@ -325,7 +553,7 @@ class Food {
               isInputState
                 ? `
               <div class="input-group">
-                <input type="text" class="form-control food-code" value="${this.food_code}" onkeyup="Food.searchFood(this)">
+                <input type="text" class="form-control food-code" value="${this.food_code}">
                 <div class="search-results d-none position-absolute w-100 bg-white border rounded-bottom shadow-sm" style="z-index: 1000; top: 100%"></div>
               </div>
             `
