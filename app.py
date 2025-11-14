@@ -9,17 +9,21 @@ app = create_app()
 
 
 # TODO
-
-# Criar um Alimetno Novo (só para pessoa que cadastrou)
+#DARK MODE
 # Alimentos favoritos
 # VERIFICACAO por email
-# Adicionar mais comidas que nao tem no banco de dados
+# Adicionar mais comidas que nao tem no banco de dados (do fatsecret)
 
 
 # Fazer um slider para as calorias
 # BUGSS
-#Nao ta Exxportando excel 
+# Nao ta Exxportando excel
 
 
 if __name__ == "__main__":
     app.run(debug=True)
+
+
+
+#Alimentos que falta coloca:
+#chocolate sicao

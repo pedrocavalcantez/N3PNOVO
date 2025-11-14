@@ -549,6 +549,9 @@ def export_diet():
     try:
         # Get the diet data from the request
         meals_data = request.get_json()
+        
+        if not meals_data:
+            return jsonify({"error": "Nenhum dado de refeição fornecido"}), 400
 
         # Create a BytesIO object to store the Excel file
         excel_file = BytesIO()
@@ -559,17 +562,31 @@ def export_diet():
             meal_names = MEAL_TYPES
 
             # Create summary DataFrame
+            # Get user info safely (handle missing attributes)
+            user_name = getattr(current_user, 'nome', None) or getattr(current_user, 'username', 'Usuário')
+            user_age = getattr(current_user, 'idade', None)
+            user_height = getattr(current_user, 'altura', None)
+            user_weight = getattr(current_user, 'peso', None)
+            user_sex = getattr(current_user, 'sexo', None)
+            
+            user_info = [f"Usuário: {user_name}"]
+            if user_age:
+                user_info.append(f"Idade: {user_age} anos")
+            if user_height:
+                user_info.append(f"Altura: {user_height} cm")
+            if user_weight:
+                user_info.append(f"Peso: {user_weight} kg")
+            if user_sex:
+                user_info.append(f"Sexo: {'Masculino' if user_sex == 'M' else 'Feminino'}")
+            
+            user_info.extend([
+                f"Data: {datetime.now().strftime('%d/%m/%Y')}",
+                "",  # Empty row for spacing
+                "Resumo por Refeição:",
+            ])
+            
             summary_data = {
-                "Informações do Usuário": [
-                    f"Nome: {current_user.nome}",
-                    f"Idade: {current_user.idade} anos",
-                    f"Altura: {current_user.altura} cm",
-                    f"Peso: {current_user.peso} kg",
-                    f"Sexo: {'Masculino' if current_user.sexo == 'M' else 'Feminino'}",
-                    f"Data: {datetime.now().strftime('%d/%m/%Y')}",
-                    "",  # Empty row for spacing
-                    "Resumo por Refeição:",
-                ]
+                "Informações do Usuário": user_info
             }
 
             # Calculate totals for each meal
@@ -630,19 +647,28 @@ def export_diet():
 
                 # Convert the foods list to a DataFrame
                 df = pd.DataFrame(foods)
+                
+                # Ensure required columns exist, fill missing ones with empty values
+                required_cols = {
+                    "food_code": "Alimento",
+                    "quantity": "Quantidade (g)",
+                    "calories": "Calorias",
+                    "proteins": "Proteínas (g)",
+                    "carbs": "Carboidratos (g)",
+                    "fats": "Gorduras (g)",
+                }
+                
+                # Add missing columns with default values
+                for col in required_cols.keys():
+                    if col not in df.columns:
+                        df[col] = 0 if col != "food_code" else ""
 
                 # Rename columns to Portuguese
-                df = df.rename(
-                    columns={
-                        "food_code": "Alimento",
-                        "quantity": "Quantidade (g)",
-                        "calories": "Calorias",
-                        "proteins": "Proteínas (g)",
-                        "carbs": "Carboidratos (g)",
-                        "fats": "Gorduras (g)",
-                    }
-                )
-                df.drop("id", axis=1, inplace=True)
+                df = df.rename(columns=required_cols)
+                
+                # Drop 'id' column if it exists
+                if "id" in df.columns:
+                    df.drop("id", axis=1, inplace=True)
 
                 # Write the DataFrame to a sheet
                 sheet_name = meal_names.get(meal_type, meal_type)
@@ -668,7 +694,10 @@ def export_diet():
         )
 
     except Exception as e:
-        return jsonify({"error": str(e)}), 500
+        import traceback
+        error_trace = traceback.format_exc()
+        print(f"Error exporting diet: {error_trace}")
+        return jsonify({"error": f"Erro ao exportar dieta: {str(e)}"}), 500
 
 
 @bp.route("/diets", methods=["POST"])

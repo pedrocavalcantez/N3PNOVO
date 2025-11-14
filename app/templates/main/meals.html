@@ -265,7 +265,6 @@
           <table class="table table-hover" id="userFoodsTable">
             <thead>
               <tr>
-                <th>Código</th>
                 <th>Nome</th>
                 <th>Quantidade (g)</th>
                 <th>Calorias</th>
@@ -277,7 +276,7 @@
             </thead>
             <tbody id="userFoodsTableBody">
               <tr>
-                <td colspan="8" class="text-center text-muted">
+                <td colspan="7" class="text-center text-muted">
                   <i class="fas fa-spinner fa-spin"></i> Carregando...
                 </td>
               </tr>
@@ -313,29 +312,17 @@
           <div id="foodFormAlert"></div>
           <input type="hidden" id="foodId" name="food_id" />
           <div class="mb-3">
-            <label for="foodCode" class="form-label">Código</label>
-            <input
-              type="text"
-              class="form-control"
-              id="foodCode"
-              name="code"
-              placeholder="Ex: MEU_ARROZ"
-            />
-            <small class="form-text text-muted"
-              >Código único para identificar o alimento (opcional se preencher o nome)</small
-            >
-          </div>
-          <div class="mb-3">
-            <label for="foodName" class="form-label">Nome</label>
+            <label for="foodName" class="form-label">Nome ou Código *</label>
             <input
               type="text"
               class="form-control"
               id="foodName"
               name="name"
-              placeholder="Ex: Arroz Integral Personalizado"
+              required
+              placeholder="Ex: Arroz Integral Personalizado ou MEU_ARROZ"
             />
             <small class="form-text text-muted"
-              >Nome do alimento (opcional se preencher o código)</small
+              >Digite o nome ou código do alimento</small
             >
           </div>
           <div class="mb-3">
@@ -488,7 +475,6 @@
           data.foods.forEach((food) => {
             const row = document.createElement("tr");
             row.innerHTML = `
-              <td><code>${food.code}</code></td>
               <td>${food.name}</td>
               <td>${food.quantity}</td>
               <td>${food.calories.toFixed(1)}</td>
@@ -509,7 +495,7 @@
         } else {
           tbody.innerHTML = `
             <tr>
-              <td colspan="8" class="text-center text-muted">
+              <td colspan="7" class="text-center text-muted">
                 Nenhum alimento personalizado cadastrado ainda.
               </td>
             </tr>
@@ -520,7 +506,7 @@
         console.error("Erro ao carregar alimentos:", err);
         document.getElementById("userFoodsTableBody").innerHTML = `
           <tr>
-            <td colspan="8" class="text-center text-danger">
+            <td colspan="7" class="text-center text-danger">
               Erro ao carregar alimentos. Por favor, recarregue a página.
             </td>
           </tr>
@@ -537,8 +523,8 @@
           if (food) {
             editingFoodId = foodId;
             document.getElementById("foodId").value = food.id;
-            document.getElementById("foodCode").value = food.code;
-            document.getElementById("foodName").value = food.name;
+            // Usa o nome como valor padrão, ou código se nome não existir
+            document.getElementById("foodName").value = food.name || food.code;
             document.getElementById("foodQuantity").value = food.quantity;
             document.getElementById("foodProteins").value = food.proteins;
             document.getElementById("foodCarbs").value = food.carbs;
@@ -585,12 +571,11 @@
   document.getElementById("foodForm").addEventListener("submit", (e) => {
     e.preventDefault();
 
-    const code = document.getElementById("foodCode").value.trim();
-    const name = document.getElementById("foodName").value.trim();
+    const nameOrCode = document.getElementById("foodName").value.trim();
     
-    // Validação: pelo menos um dos dois (código ou nome) deve ser preenchido
-    if (!code && !name) {
-      showFoodAlert("Por favor, preencha pelo menos o código ou o nome do alimento.", "danger");
+    // Validação: o campo nome/código deve ser preenchido
+    if (!nameOrCode) {
+      showFoodAlert("Por favor, preencha o nome ou código do alimento.", "danger");
       return;
     }
 
@@ -598,8 +583,8 @@
     calculateCalories();
 
     const formData = {
-      code: code || name, // Se não tiver código, usa o nome como código
-      name: name || code, // Se não tiver nome, usa o código como nome
+      code: nameOrCode, // Usa o mesmo valor como código
+      name: nameOrCode, // Usa o mesmo valor como nome
       quantity: parseFloat(document.getElementById("foodQuantity").value),
       calories: parseFloat(document.getElementById("foodCalories").value),
       proteins: parseFloat(document.getElementById("foodProteins").value),
