@@ -1,0 +1,71 @@
+{% extends "base.html" %}
+{% block title %}Histórico - N3P{% endblock %}
+
+{% block content %}
+<div class="container mt-4">
+  <div class="d-flex justify-content-between align-items-center mb-4">
+    <h1 class="mb-0">
+      <i class="fas fa-history me-2"></i>Histórico de Diários
+    </h1>
+  </div>
+
+  {% if history_data %}
+  <div class="card">
+    <div class="card-body">
+      <div class="table-responsive">
+        <table class="table table-hover">
+          <thead class="table-light">
+            <tr>
+              <th>Data</th>
+              <th>Nome</th>
+              <th>Calorias</th>
+              <th>Proteínas (g)</th>
+              <th>Carboidratos (g)</th>
+              <th>Gorduras (g)</th>
+              <th>Ações</th>
+            </tr>
+          </thead>
+          <tbody>
+            {% for entry in history_data %}
+            <tr>
+              <td>
+                <strong>{{ entry.date.strftime('%d/%m/%Y') }}</strong>
+              </td>
+              <td>{{ entry.name }}</td>
+              <td>
+                <span class="badge bg-primary">{{ entry.calories }}</span>
+              </td>
+              <td>
+                <span class="badge bg-success">{{ entry.proteins }}</span>
+              </td>
+              <td>
+                <span class="badge bg-warning text-dark">{{ entry.carbs }}</span>
+              </td>
+              <td>
+                <span class="badge bg-danger">{{ entry.fats }}</span>
+              </td>
+              <td>
+                <a 
+                  href="{{ url_for('main.dashboard', date=entry.date.strftime('%Y-%m-%d')) }}" 
+                  class="btn btn-sm btn-primary"
+                  title="Ver detalhes"
+                >
+                  <i class="fas fa-eye"></i> Ver
+                </a>
+              </td>
+            </tr>
+            {% endfor %}
+          </tbody>
+        </table>
+      </div>
+    </div>
+  </div>
+  {% else %}
+  <div class="alert alert-info">
+    <i class="fas fa-info-circle me-2"></i>
+    Você ainda não tem nenhum registro no diário. Comece adicionando alimentos no Dashboard!
+  </div>
+  {% endif %}
+</div>
+{% endblock %}
+

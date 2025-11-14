@@ -198,6 +198,7 @@ def delete_food(food_id):
 @bp.route("/save_diet", methods=["POST"])
 @login_required
 def save_diet():
+    """Salva uma dieta modelo (sem data)"""
     try:
         data = request.get_json()
         if not data:
@@ -205,38 +206,237 @@ def save_diet():
 
         name = data.get("name")
         meals_data = data.get("meals_data")
-        diet_id = request.args.get("diet_id")
-
+        diet_id = request.args.get("diet_id")  # Para atualizar dieta modelo existente
+        
         if not name or not meals_data:
             return jsonify({"success": False, "error": "Missing required fields"}), 400
 
         if diet_id:
-            # Update existing diet
+            # Atualiza dieta modelo existente
             diet = Diet.query.filter_by(
-                id=diet_id, user_id=current_user.id
+                id=diet_id, 
+                user_id=current_user.id,
+                date=None  # Apenas dietas modelo
             ).first_or_404()
             diet.name = name
             diet.meals_data = meals_data
+            diet.updated_at = datetime.utcnow()
+            db.session.commit()
+            return jsonify({
+                "success": True, 
+                "message": "Dieta modelo atualizada com sucesso!",
+                "diet_id": diet.id
+            })
         else:
-            # Create new diet
-            diet = Diet(name=name, user_id=current_user.id, meals_data=meals_data)
+            # Cria nova dieta modelo (sem data)
+            diet = Diet(
+                name=name, 
+                user_id=current_user.id, 
+                date=None,  # NULL = dieta modelo
+                meals_data=meals_data
+            )
             db.session.add(diet)
-
-        db.session.commit()
-        return jsonify({"success": True, "message": "Diet saved successfully"})
+            db.session.commit()
+            return jsonify({
+                "success": True, 
+                "message": "Dieta modelo salva com sucesso!",
+                "diet_id": diet.id
+            })
     except Exception as e:
         db.session.rollback()
+        import traceback
+        print(f"Error saving diet template: {traceback.format_exc()}")
+        return jsonify({"success": False, "error": str(e)}), 500
+
+
+@bp.route("/save_daily_diet", methods=["POST"])
+@login_required
+def save_daily_diet():
+    """Salva uma dieta do dia (com data específica)"""
+    try:
+        data = request.get_json()
+        if not data:
+            return jsonify({"success": False, "error": "No data provided"}), 400
+
+        name = data.get("name")
+        meals_data = data.get("meals_data")
+        diet_date_str = data.get("date")  # Data no formato YYYY-MM-DD
+        
+        if not name or not meals_data or not diet_date_str:
+            return jsonify({"success": False, "error": "Missing required fields"}), 400
+
+        # Parse da data
+        from datetime import datetime as dt
+        diet_date = dt.strptime(diet_date_str, "%Y-%m-%d").date()
+
+        # Verifica se já existe dieta para esta data
+        existing_diet = Diet.query.filter_by(
+            user_id=current_user.id,
+            date=diet_date
+        ).first()
+
+        if existing_diet:
+            # Atualiza dieta existente para esta data
+            existing_diet.name = name
+            existing_diet.meals_data = meals_data
+            existing_diet.updated_at = datetime.utcnow()
+            db.session.commit()
+            return jsonify({
+                "success": True, 
+                "message": "Registro atualizado no diário com sucesso!",
+                "diet_id": existing_diet.id,
+                "date": existing_diet.date.isoformat()
+            })
+        else:
+            # Cria nova dieta para esta data
+            diet = Diet(
+                name=name, 
+                user_id=current_user.id, 
+                date=diet_date,
+                meals_data=meals_data
+            )
+            db.session.add(diet)
+            db.session.commit()
+            return jsonify({
+                "success": True, 
+                "message": "Registro salvo no diário com sucesso!",
+                "diet_id": diet.id,
+                "date": diet.date.isoformat()
+            })
+    except Exception as e:
+        db.session.rollback()
+        import traceback
+        from sqlalchemy.exc import IntegrityError
+        
+        # Tratamento específico para violação de constraint único
+        if isinstance(e, IntegrityError):
+            # Se houver violação do constraint único, tenta atualizar o registro existente
+            try:
+                existing_diet = Diet.query.filter_by(
+                    user_id=current_user.id,
+                    date=diet_date
+                ).first()
+                if existing_diet:
+                    existing_diet.name = name
+                    existing_diet.meals_data = meals_data
+                    existing_diet.updated_at = datetime.utcnow()
+                    db.session.commit()
+                    return jsonify({
+                        "success": True, 
+                        "message": "Registro atualizado no diário com sucesso!",
+                        "diet_id": existing_diet.id,
+                        "date": existing_diet.date.isoformat()
+                    })
+            except Exception as e2:
+                pass
+        
+        print(f"Error saving daily diet: {traceback.format_exc()}")
         return jsonify({"success": False, "error": str(e)}), 500
 
 
 @bp.route("/load_diet/<int:diet_id>")
 @login_required
 def load_diet(diet_id):
+    """Carrega dieta por ID (mantido para compatibilidade)"""
     try:
         diet = Diet.query.filter_by(id=diet_id, user_id=current_user.id).first_or_404()
         return jsonify(
-            {"success": True, "name": diet.name, "meals_data": diet.meals_data}
+            {
+                "success": True, 
+                "name": diet.name, 
+                "meals_data": diet.meals_data,
+                "date": diet.date.isoformat() if diet.date else None
+            }
         )
+    except Exception as e:
+        return jsonify({"success": False, "error": str(e)}), 500
+
+
+@bp.route("/load_diet_by_date", methods=["GET"])
+@login_required
+def load_diet_by_date():
+    """Carrega dieta por data"""
+    try:
+        date_str = request.args.get("date")
+        if not date_str:
+            return jsonify({"success": False, "error": "Data não fornecida"}), 400
+        
+        from datetime import datetime as dt
+        diet_date = dt.strptime(date_str, "%Y-%m-%d").date()
+        
+        diet = Diet.query.filter_by(
+            user_id=current_user.id,
+            date=diet_date
+        ).first()
+        
+        if diet:
+            return jsonify({
+                "success": True,
+                "name": diet.name,
+                "meals_data": diet.meals_data,
+                "date": diet.date.isoformat(),
+                "diet_id": diet.id
+            })
+        else:
+            # Não é um erro - simplesmente não há diário para esta data
+            return jsonify({
+                "success": True,
+                "meals_data": {},
+                "message": "Nenhum diário encontrado para esta data"
+            })
+    except ValueError:
+        return jsonify({"success": False, "error": "Formato de data inválido. Use YYYY-MM-DD"}), 400
+    except Exception as e:
+        return jsonify({"success": False, "error": str(e)}), 500
+
+
+@bp.route("/list_diets", methods=["GET"])
+@login_required
+def list_diets():
+    """Lista todas as dietas modelo do usuário (sem data)"""
+    try:
+        diets = Diet.query.filter_by(
+            user_id=current_user.id,
+            date=None  # Apenas dietas modelo
+        ).order_by(Diet.created_at.desc()).all()
+        
+        diets_list = [{
+            "id": diet.id,
+            "name": diet.name,
+            "created_at": diet.created_at.isoformat() if diet.created_at else None,
+            "is_template": True
+        } for diet in diets]
+        
+        return jsonify({
+            "success": True,
+            "diets": diets_list
+        })
+    except Exception as e:
+        return jsonify({"success": False, "error": str(e)}), 500
+
+
+@bp.route("/list_daily_diets", methods=["GET"])
+@login_required
+def list_daily_diets():
+    """Lista todas as dietas do dia do usuário ordenadas por data"""
+    try:
+        diets = Diet.query.filter(
+            Diet.user_id == current_user.id,
+            Diet.date.isnot(None)  # Apenas dietas do dia
+        ).order_by(Diet.date.desc()).all()
+        
+        diets_list = [{
+            "id": diet.id,
+            "name": diet.name,
+            "date": diet.date.isoformat() if diet.date else None,
+            "created_at": diet.created_at.isoformat() if diet.created_at else None,
+            "is_template": False
+        } for diet in diets]
+        
+        return jsonify({
+            "success": True,
+            "diets": diets_list
+        })
     except Exception as e:
         return jsonify({"success": False, "error": str(e)}), 500
 
@@ -548,10 +748,23 @@ def calculate_portions():
 def export_diet():
     try:
         # Get the diet data from the request
-        meals_data = request.get_json()
+        data = request.get_json()
         
-        if not meals_data:
+        if not data:
             return jsonify({"error": "Nenhum dado de refeição fornecido"}), 400
+        
+        meals_data = data.get("meals_data", data)  # Backward compatibility
+        date_str = data.get("date")
+        
+        # Parse the date if provided, otherwise use today
+        from datetime import datetime as dt
+        if date_str:
+            try:
+                export_date = dt.strptime(date_str, "%Y-%m-%d").date()
+            except ValueError:
+                export_date = datetime.now().date()
+        else:
+            export_date = datetime.now().date()
 
         # Create a BytesIO object to store the Excel file
         excel_file = BytesIO()
@@ -580,7 +793,7 @@ def export_diet():
                 user_info.append(f"Sexo: {'Masculino' if user_sex == 'M' else 'Feminino'}")
             
             user_info.extend([
-                f"Data: {datetime.now().strftime('%d/%m/%Y')}",
+                f"Data: {export_date.strftime('%d/%m/%Y')}",
                 "",  # Empty row for spacing
                 "Resumo por Refeição:",
             ])

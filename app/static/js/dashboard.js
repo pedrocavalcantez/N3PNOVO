@@ -142,9 +142,10 @@ async function exportToExcel() {
     // Collect all meal data
     const mealsData = collectMealsData();
 
-    // Get the current date for the filename
-    const date = new Date().toISOString().split("T")[0];
-    const filename = `dieta_${date}.xlsx`;
+    // Get the selected date from the date input, or use today
+    const dateInput = document.getElementById('dietDate');
+    const selectedDate = dateInput ? dateInput.value : new Date().toISOString().split("T")[0];
+    const filename = `dieta_${selectedDate}.xlsx`;
 
     // Make API call to get the Excel file
     const response = await fetch("/api/export_diet", {
@@ -152,7 +153,10 @@ async function exportToExcel() {
       headers: {
         "Content-Type": "application/json",
       },
-      body: JSON.stringify(mealsData),
+      body: JSON.stringify({
+        meals_data: mealsData,
+        date: selectedDate
+      }),
     });
 
     if (!response.ok) {

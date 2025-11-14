@@ -29,20 +29,34 @@ def guest_dashboard():
 @bp.route("/dashboard")
 @login_required
 def dashboard():
-    # Busca a dieta mais recente do usuário
-    most_recent_diet = (
-        Diet.query.filter_by(user_id=current_user.id)
-        .order_by(Diet.created_at.desc())
+    from datetime import date, datetime
+    
+    # Aceita parâmetro de data na URL, ou usa hoje como padrão
+    date_str = request.args.get("date")
+    if date_str:
+        try:
+            selected_date = datetime.strptime(date_str, "%Y-%m-%d").date()
+        except ValueError:
+            selected_date = date.today()
+    else:
+        selected_date = date.today()
+    
+    # Busca o diário da data selecionada (não busca dietas modelo ou de outros dias)
+    diary_for_date = (
+        Diet.query.filter_by(user_id=current_user.id, date=selected_date)
         .first()
     )
 
-    # Busca todas as dietas do usuário
+    # Busca todas as dietas modelo do usuário (sem data)
     saved_diets = (
-        Diet.query.filter_by(user_id=current_user.id)
+        Diet.query.filter_by(user_id=current_user.id, date=None)
         .order_by(Diet.created_at.desc())
         .all()
     )
 
+    # Data de hoje para o seletor
+    today = date.today()
+    
     # Inicializa os totais diários e metas do usuário
     daily_totals = {"calories": 0, "proteins": 0, "carbs": 0, "fats": 0}
 
@@ -53,8 +67,8 @@ def dashboard():
         "fats": current_user.fats_goal or 0,
     }
 
-    # Inicializa as refeições
-    meals = []
+    # Inicializa as refeições como dicionário vazio (não lista)
+    meals = {}
 
     meal_totals = {}
     for y in MEAL_TYPES.keys():
@@ -62,9 +76,9 @@ def dashboard():
         for x in MACRO_TYPES.keys():
             meal_totals[y][x] = 0
 
-    # Se houver uma dieta mais recente, carrega os dados das refeições
-    if most_recent_diet and most_recent_diet.meals_data:
-        meals = most_recent_diet.meals_data
+    # Se houver um diário para a data selecionada, carrega os dados das refeições
+    if diary_for_date and diary_for_date.meals_data:
+        meals = diary_for_date.meals_data or {}
         # Atualiza os totais diários com base nas refeições
         for meal_type, foods in meals.items():
             for food in foods:
@@ -80,29 +94,18 @@ def dashboard():
                     meal_totals[meal_type]["carbs"] += float(food.get("carbs", 0))
                     meal_totals[meal_type]["fats"] += float(food.get("fats", 0))
 
-    if not most_recent_diet:
-        return render_template(
-            "main/dashboard.html",
-            title="Dashboard",
-            diet=None,
-            meal_types=MEAL_TYPES,
-            daily_totals=daily_totals,
-            user_goals=user_goals,
-            meals=meals,
-            meal_totals=meal_totals,
-            saved_diets=saved_diets,
-        )
-
+    # Sempre renderiza, mas diet=None se não houver diário para a data selecionada
     return render_template(
         "main/dashboard.html",
         title="Dashboard",
-        diet=most_recent_diet,
+        diet=diary_for_date,  # Pode ser None se não houver diário para a data
         meal_types=MEAL_TYPES,
         daily_totals=daily_totals,
         user_goals=user_goals,
         meals=meals,
         meal_totals=meal_totals,
         saved_diets=saved_diets,
+        today=selected_date,  # Usa a data selecionada (pode ser hoje ou outra data)
     )
 
 
@@ -164,6 +167,46 @@ def meals():
         })
     
     return render_template("main/meals.html", templates_with_nutrition=templates_with_nutrition, MEAL_TYPES=MEAL_TYPES)
+
+
+@bp.route("/history")
+@login_required
+def history():
+    """Página para visualizar histórico de diários"""
+    # Busca todos os diários do usuário (com date não nulo), ordenados por data (mais recente primeiro)
+    diaries = (
+        Diet.query.filter_by(user_id=current_user.id)
+        .filter(Diet.date.isnot(None))
+        .order_by(Diet.date.desc())
+        .all()
+    )
+    
+    # Calcula os totais nutricionais para cada diário
+    history_data = []
+    for diary in diaries:
+        total_calories = 0
+        total_proteins = 0
+        total_carbs = 0
+        total_fats = 0
+        
+        if diary.meals_data:
+            for meal_type, foods in diary.meals_data.items():
+                for food in foods:
+                    total_calories += float(food.get("calories", 0))
+                    total_proteins += float(food.get("proteins", 0))
+                    total_carbs += float(food.get("carbs", 0))
+                    total_fats += float(food.get("fats", 0))
+        
+        history_data.append({
+            "date": diary.date,
+            "name": diary.name,
+            "calories": round(total_calories, 1),
+            "proteins": round(total_proteins, 1),
+            "carbs": round(total_carbs, 1),
+            "fats": round(total_fats, 1),
+        })
+    
+    return render_template("main/history.html", history_data=history_data)
 
 
 @bp.route("/api/meal_templates")

@@ -11,20 +11,33 @@
   };
 </script>
 <div class="container mt-4">
-  <h1>Dashboard</h1>
+  <div class="d-flex justify-content-between align-items-center mb-3">
+    <h1 class="mb-0">Dashboard</h1>
+    <div class="d-flex align-items-center gap-2">
+      <label for="dietDate" class="mb-0 fw-bold">Data da Dieta:</label>
+      <input 
+        type="date" 
+        id="dietDate" 
+        class="form-control" 
+        style="width: auto;"
+        value="{{ today.strftime('%Y-%m-%d') if today else '' }}"
+        onchange="changeDate(this.value)"
+      />
+    </div>
+  </div>
 
   {% if diet %}
   <div class="card mb-4">
     <div class="card-header">
-      <h5 class="mb-0">Dieta Atual: {{ diet.name }}</h5>
+      <h5 class="mb-0">Dieta: {{ diet.name }}</h5>
     </div>
     <div class="card-body">
-      <p>Data de criação: {{ diet.created_at.strftime('%d/%m/%Y') }}</p>
+      <p>Data: {{ diet.date.strftime('%d/%m/%Y') if diet.date else diet.created_at.strftime('%d/%m/%Y') }}</p>
     </div>
   </div>
   {% else %}
   <div class="alert alert-info">
-    Você ainda não tem nenhuma dieta cadastrada.
+    Você ainda não tem nenhuma dieta cadastrada para esta data.
   </div>
   {% endif %}
 
@@ -49,16 +62,23 @@
             <button
               class="btn btn-primary me-2"
               data-bs-toggle="modal"
+              data-bs-target="#saveDailyDietModal"
+            >
+              <i class="fas fa-book me-1"></i>Salvar no Diário
+            </button>
+            <button
+              class="btn btn-secondary me-2"
+              data-bs-toggle="modal"
               data-bs-target="#saveDietModal"
             >
-              <i class="fas fa-save me-1"></i>Salvar Dieta
+              <i class="fas fa-save me-1"></i>Salvar Dieta Modelo
             </button>
             <button
               class="btn btn-info me-2"
               data-bs-toggle="modal"
               data-bs-target="#loadDietModal"
             >
-              <i class="fas fa-folder-open me-1"></i>Carregar Dieta
+              <i class="fas fa-folder-open me-1"></i>Carregar Dieta Modelo
             </button>
             <button
               class="btn btn-warning me-2"
@@ -178,7 +198,7 @@
               class="btn btn-link p-0 me-2 expand-btn"
               onclick="toggleMealSection('{{ meal_type }}')"
             >
-              <i class="fas fa-chevron-down"></i>
+              <i class="fas {% if meals and meals.get(meal_type) and meals[meal_type]|length > 0 %}fa-chevron-up{% else %}fa-chevron-down{% endif %}"></i>
             </button>
             <h5 class="mb-0">{{ meal_name }}</h5>
           </div>
@@ -208,7 +228,7 @@
         <div
           class="card-body meal-content"
           id="{{ meal_type }}-content"
-          style="display: none"
+          style="{% if meals and meals.get(meal_type) and meals[meal_type]|length > 0 %}display: block;{% else %}display: none;{% endif %}"
         >
           <div class="table-responsive">
             <table class="table table-hover">
@@ -224,8 +244,11 @@
                 </tr>
               </thead>
               <tbody id="{{ meal_type }}-foods">
-                {% for food in meals[meal_type] %} {{ render_food_row(food) }}
-                {% endfor %}
+                {% if meals and meals.get(meal_type) %}
+                  {% for food in meals[meal_type] %} 
+                    {{ render_food_row(food) }}
+                  {% endfor %}
+                {% endif %}
               </tbody>
               <tfoot>
                 <tr class="table-secondary">
@@ -509,12 +532,54 @@
   {% endfor %}
 </script>
 
-<!-- Save Diet Modal -->
+<!-- Save Daily Diet Modal -->
+<div class="modal fade" id="saveDailyDietModal" tabindex="-1">
+  <div class="modal-dialog">
+    <div class="modal-content">
+      <div class="modal-header">
+        <h5 class="modal-title">Salvar no Diário</h5>
+        <button
+          type="button"
+          class="btn-close"
+          data-bs-dismiss="modal"
+        ></button>
+      </div>
+      <div class="modal-body">
+        <form id="saveDailyDietForm">
+          <div class="mb-3">
+            <label for="dailyDietName" class="form-label">Nome do Registro</label>
+            <input
+              type="text"
+              class="form-control"
+              id="dailyDietName"
+              required
+              placeholder="Ex: Registro do dia"
+              value="Registro do Dia"
+            />
+            <small class="form-text text-muted">
+              Este registro será salvo no diário para a data selecionada acima
+            </small>
+          </div>
+        </form>
+      </div>
+      <div class="modal-footer">
+        <button type="button" class="btn btn-secondary" data-bs-dismiss="modal">
+          Cancelar
+        </button>
+        <button type="button" class="btn btn-primary" onclick="saveDailyDiet()">
+          <i class="fas fa-save me-1"></i>Salvar
+        </button>
+      </div>
+    </div>
+  </div>
+</div>
+
+<!-- Save Diet Template Modal -->
 <div class="modal fade" id="saveDietModal" tabindex="-1">
   <div class="modal-dialog">
     <div class="modal-content">
       <div class="modal-header">
-        <h5 class="modal-title">Salvar Dieta</h5>
+        <h5 class="modal-title">Salvar Dieta Modelo</h5>
         <button
           type="button"
           class="btn-close"
@@ -631,6 +696,21 @@
     </div>
   </div>
 </div>
+<script>
+  // Função para mudar a data - recarrega a página com o parâmetro de data
+  window.changeDate = function(dateStr) {
+    if (!dateStr) {
+      return;
+    }
+    // Recarrega a página com o parâmetro de data na URL
+    window.location.href = '/dashboard?date=' + dateStr;
+  };
+  
+  // Mantém a função loadDietByDate para compatibilidade (caso seja usada em outros lugares)
+  window.loadDietByDate = function(dateStr) {
+    changeDate(dateStr);
+  };
+</script>
 {% endblock %} {% block extra_css %}
 <link
   rel="stylesheet"
@@ -650,4 +730,27 @@
 <script src="{{ url_for('static', filename='js/dashboard.js') }}"></script>
 {% if request.args.get('complement') == 'true' %}
 <script src="{{ url_for('static', filename='js/calculator.js') }}"></script>
-{% endif %} {% endblock %}
+{% endif %}
+<script>
+  // Não precisa mais carregar via AJAX - o backend já renderizou os dados corretos
+  // Apenas atualiza os totais se necessário
+  (function() {
+    function updateTotals() {
+      if (typeof Food !== 'undefined' && Food.updateTotalsFor) {
+        Object.keys(MEAL_TYPES || {}).forEach((mealType) => {
+          Food.updateTotalsFor(mealType);
+        });
+      }
+    }
+    
+    // Atualiza os totais quando o DOM estiver pronto
+    if (document.readyState === 'loading') {
+      document.addEventListener('DOMContentLoaded', function() {
+        setTimeout(updateTotals, 100);
+      });
+    } else {
+      setTimeout(updateTotals, 100);
+    }
+  })();
+</script>
+{% endblock %}

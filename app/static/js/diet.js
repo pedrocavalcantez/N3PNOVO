@@ -118,35 +118,144 @@ async function saveDiet() {
   try {
     const { dietName, existingDietId } = getDietInfo();
     if (!dietName) {
-      alert("Por favor, insira um nome para a dieta");
+      alert("Por favor, insira um nome para a dieta modelo");
       return;
     }
-    if (
-      existingDietId &&
-      !confirm(`A dieta "${dietName}" já existe. Deseja sobrescrevê-la?`)
-    ) {
-      return;
-    }
+    
     const mealsData = collectMealsData();
     const url = existingDietId
       ? `/api/save_diet?diet_id=${existingDietId}`
       : "/api/save_diet";
 
-    await makeDietApiCall(url, {
+    const response = await makeDietApiCall(url, {
       method: "POST",
       headers: { "Content-Type": "application/json" },
-      body: JSON.stringify({ name: dietName, meals_data: mealsData }),
+      body: JSON.stringify({ 
+        name: dietName, 
+        meals_data: mealsData
+        // Não envia date - será NULL (dieta modelo)
+      }),
     });
 
     closeModal("saveDietModal");
-    alert(
-      existingDietId
-        ? "Dieta atualizada com sucesso!"
-        : "Dieta salva com sucesso!"
-    );
-    location.reload();
+    alert(response.message || "Dieta modelo salva com sucesso!");
   } catch (error) {
-    alert("Erro ao salvar dieta: " + error.message);
+    alert("Erro ao salvar dieta modelo: " + error.message);
+  }
+}
+
+async function saveDailyDiet() {
+  try {
+    const dietNameInput = document.getElementById("dailyDietName");
+    const dietName = dietNameInput ? dietNameInput.value.trim() : "Registro do Dia";
+    
+    if (!dietName) {
+      alert("Por favor, insira um nome para o registro no diário");
+      return;
+    }
+    
+    // Obtém a data selecionada
+    const dateInput = document.getElementById("dietDate");
+    if (!dateInput || !dateInput.value) {
+      alert("Por favor, selecione uma data");
+      return;
+    }
+    const dietDate = dateInput.value;
+    
+    const mealsData = collectMealsData();
+    const url = "/api/save_daily_diet";
+
+    const response = await makeDietApiCall(url, {
+      method: "POST",
+      headers: { "Content-Type": "application/json" },
+      body: JSON.stringify({ 
+        name: dietName, 
+        meals_data: mealsData,
+        date: dietDate
+      }),
+    });
+
+    closeModal("saveDailyDietModal");
+    alert(response.message || "Registro salvo no diário com sucesso!");
+    
+    // NÃO recarrega automaticamente - mantém os alimentos na tela
+    // Apenas atualiza os totais se necessário
+    Object.keys(MEAL_TYPES).forEach((mealType) => {
+      if (typeof Food !== 'undefined' && Food.updateTotalsFor) {
+        Food.updateTotalsFor(mealType);
+      }
+    });
+  } catch (error) {
+    alert("Erro ao salvar no diário: " + error.message);
+  }
+}
+
+async function loadDietByDate(dateStr) {
+  try {
+    if (!dateStr) {
+      console.warn("Data não fornecida para carregar diário");
+      clearAllTables();
+      Object.keys(MEAL_TYPES).forEach((mealType) => {
+        Food.updateTotalsFor(mealType);
+      });
+      return;
+    }
+
+    const data = await makeDietApiCall(`/api/load_diet_by_date?date=${dateStr}`);
+    
+    // Limpa as tabelas primeiro
+    clearAllTables();
+    
+    if (data.success && data.meals_data) {
+      // Garante que todas as seções estão visíveis no DOM
+      Object.keys(MEAL_TYPES).forEach((mealType) => {
+        const content = document.getElementById(`${mealType}-content`);
+        if (content) {
+          const btn = content.closest(".card")?.querySelector(".expand-btn i");
+          if (content.style.display === "none") {
+            content.style.display = "block";
+            if (btn) {
+              btn.classList.remove("fa-chevron-down");
+              btn.classList.add("fa-chevron-up");
+            }
+            content.style.opacity = "1";
+          }
+        }
+      });
+
+      // Carrega os alimentos de cada refeição
+      Object.keys(data.meals_data).forEach((mealType) => {
+        const foods = data.meals_data[mealType] || [];
+        foods.forEach((food) => {
+          const foodObj = new Food(food, mealType);
+          const row = foodObj.setupRow(true);
+          const table = document.querySelector(`#${mealType}-foods tbody`);
+          if (table) {
+            table.appendChild(row);
+          }
+        });
+      });
+    }
+    // Se não houver diário para esta data (data.success === false ou sem meals_data),
+    // as tabelas já foram limpas acima, então apenas atualiza os totais
+
+    // Atualiza os totais
+    Object.keys(MEAL_TYPES).forEach((mealType) => {
+      Food.updateTotalsFor(mealType);
+    });
+
+    // Atualiza a data selecionada
+    const dateInput = document.getElementById("dietDate");
+    if (dateInput) {
+      dateInput.value = dateStr;
+    }
+  } catch (error) {
+    console.error("Erro ao carregar diário:", error);
+    // Se houver erro, limpa as tabelas
+    clearAllTables();
+    Object.keys(MEAL_TYPES).forEach((mealType) => {
+      Food.updateTotalsFor(mealType);
+    });
   }
 }
 
@@ -250,10 +359,15 @@ function clearAllTables() {
 
 window.Diet = {
   collectMealsData,
+  loadDietByDate,
   showSuggestions: showDietSuggestions,
   selectSuggestion: selectDietSuggestion,
   getDietInfo,
   saveDiet,
+  saveDailyDiet,
   loadDiet,
   deleteDiet,
 };
+
+// Torna saveDailyDiet globalmente acessível
+window.saveDailyDiet = saveDailyDiet;

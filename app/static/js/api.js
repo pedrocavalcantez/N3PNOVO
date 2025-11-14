@@ -9,7 +9,8 @@ async function makeDietApiCall(url, options = {}) {
     if (url.includes("/api/search_food")) return data;
 
     // Handle error responses
-    if (data.success === false) {
+    // Mas não trata como erro se for apenas "não encontrado" (isso é normal)
+    if (data.success === false && data.error) {
       throw new Error(data.error || "Erro desconhecido");
     }
 
