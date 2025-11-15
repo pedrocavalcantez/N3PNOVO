@@ -220,3 +220,99 @@
   text-overflow: ellipsis;
 }
 
+/* Dark Mode Styles */
+[data-theme="dark"] .form-control {
+  background-color: #2d3238;
+  border-color: var(--border-color);
+  color: var(--text-color);
+}
+
+[data-theme="dark"] .form-control:focus {
+  background-color: #2d3238;
+  border-color: var(--primary-color);
+  color: var(--text-color);
+}
+
+[data-theme="dark"] .form-control::placeholder {
+  color: var(--text-muted);
+}
+
+[data-theme="dark"] .form-floating > .form-control {
+  background-color: #2d3238;
+  border-color: var(--border-color);
+  color: var(--text-color);
+}
+
+[data-theme="dark"] .form-floating > .form-control:focus {
+  background-color: #2d3238;
+  border-color: var(--primary-color);
+  color: var(--text-color);
+}
+
+[data-theme="dark"] .form-floating > label {
+  color: var(--text-muted);
+}
+
+[data-theme="dark"] .food-code,
+[data-theme="dark"] .food-min,
+[data-theme="dark"] .food-max {
+  background-color: #2d3238;
+  border-color: var(--border-color);
+  color: var(--text-color);
+}
+
+[data-theme="dark"] .food-code:focus,
+[data-theme="dark"] .food-min:focus,
+[data-theme="dark"] .food-max:focus {
+  background-color: #2d3238;
+  border-color: var(--primary-color);
+  color: var(--text-color);
+}
+
+[data-theme="dark"] .food-code::placeholder,
+[data-theme="dark"] .food-min::placeholder,
+[data-theme="dark"] .food-max::placeholder {
+  color: var(--text-muted);
+}
+
+[data-theme="dark"] .food-item {
+  background-color: var(--card-background);
+  border-color: var(--border-color);
+}
+
+[data-theme="dark"] .results-table {
+  background-color: var(--card-background);
+  color: var(--text-color);
+}
+
+[data-theme="dark"] .results-table td {
+  background-color: var(--card-background);
+  color: var(--text-color);
+  border-bottom-color: var(--border-color);
+}
+
+[data-theme="dark"] .results-table tr:hover td {
+  background-color: rgba(180, 217, 87, 0.1);
+}
+
+[data-theme="dark"] .totals-row td {
+  background-color: rgba(180, 217, 87, 0.15);
+}
+
+[data-theme="dark"] .card {
+  background-color: var(--card-background);
+  border-color: var(--border-color);
+  color: var(--text-color);
+}
+
+[data-theme="dark"] .card-header {
+  background-color: var(--card-background);
+  border-bottom-color: var(--border-color);
+  color: var(--text-color);
+}
+
+[data-theme="dark"] .card-body {
+  background-color: var(--card-background);
+  color: var(--text-color);
+}
+
