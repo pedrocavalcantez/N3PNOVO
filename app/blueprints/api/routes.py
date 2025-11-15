@@ -68,10 +68,15 @@ def search_food():
     return jsonify([{"food_code": food.code, "qtd": food.quantity} for food in unique_foods])
 
 
-@bp.route("/food_nutrition/<code>")
+@bp.route("/food_nutrition", methods=["GET"])
 @login_required
-def get_food_nutrition(code):
+def get_food_nutrition():
     try:
+        # Obtém o código do alimento do query parameter
+        code = request.args.get("code")
+        if not code:
+            return jsonify({"success": False, "error": "Código do alimento não fornecido"}), 400
+        
         # First try to find in user's custom foods
         user_food = UserFood.query.filter_by(
             code=code, user_id=current_user.id

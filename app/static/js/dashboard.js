@@ -65,6 +65,38 @@ function initializeDashboardEvents() {
     }
   });
 
+  // Adiciona listener para o formulário de salvar dieta
+  const saveDietForm = document.getElementById("saveDietForm");
+  if (saveDietForm) {
+    saveDietForm.addEventListener("submit", (event) => {
+      event.preventDefault();
+      saveDiet();
+    });
+  }
+
+  // Adiciona listener para o formulário de salvar no diário
+  const saveDailyDietForm = document.getElementById("saveDailyDietForm");
+  if (saveDailyDietForm) {
+    saveDailyDietForm.addEventListener("submit", (event) => {
+      event.preventDefault();
+      saveDailyDiet();
+    });
+  }
+
+  // Adiciona listener para Enter no campo de nome do diário
+  const dailyDietNameInput = document.getElementById("dailyDietName");
+  if (dailyDietNameInput) {
+    dailyDietNameInput.addEventListener("keydown", (event) => {
+      if (event.key === "Enter") {
+        event.preventDefault();
+        const saveDailyDietModal = document.getElementById("saveDailyDietModal");
+        if (saveDailyDietModal && saveDailyDietModal.classList.contains("show")) {
+          saveDailyDiet();
+        }
+      }
+    });
+  }
+
   const dietNameInput = document.getElementById("dietName");
   if (dietNameInput) {
     dietNameInput.addEventListener("input", () =>
@@ -117,6 +149,13 @@ function initializeDashboardEvents() {
               activeItem.textContent.trim(),
               activeItem.dataset.id
             );
+          } else {
+            // Se não há sugestão ativa, salva a dieta
+            event.preventDefault();
+            const saveDietModal = document.getElementById("saveDietModal");
+            if (saveDietModal && saveDietModal.classList.contains("show")) {
+              saveDiet();
+            }
           }
           break;
 

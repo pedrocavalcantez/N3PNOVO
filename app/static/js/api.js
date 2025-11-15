@@ -3,6 +3,14 @@
 async function makeDietApiCall(url, options = {}) {
   try {
     const response = await fetch(url, options);
+    
+    // Verifica se a resposta é JSON antes de fazer parse
+    const contentType = response.headers.get("content-type");
+    if (!contentType || !contentType.includes("application/json")) {
+      const text = await response.text();
+      throw new Error(`Resposta inválida da API: ${text.substring(0, 100)}`);
+    }
+    
     const data = await response.json();
 
     // Search endpoints return arrays directly

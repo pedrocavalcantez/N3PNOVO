@@ -49,32 +49,51 @@ class Food {
       // Add each food from the template
       for (const food of data.template.meals_data) {
         // Fetch nutritional information for the food
-        const nutritionResponse = await fetch(
-          `/api/food_nutrition/${food.food_code}`
-        );
-        const nutritionData = await nutritionResponse.json();
-
-        if (!nutritionData.success) {
-          console.error(
-            `Erro ao buscar informações nutricionais para ${food.food_code}`
+        try {
+          const nutritionResponse = await fetch(
+            `/api/food_nutrition?code=${encodeURIComponent(food.food_code)}`
           );
+          
+          // Verifica se a resposta é JSON
+          const contentType = nutritionResponse.headers.get("content-type");
+          if (!contentType || !contentType.includes("application/json")) {
+            console.error(
+              `Resposta inválida ao buscar informações nutricionais para ${food.food_code}`
+            );
+            continue;
+          }
+          
+          const nutritionData = await nutritionResponse.json();
+
+          if (!nutritionData.success) {
+            console.error(
+              `Erro ao buscar informações nutricionais para ${food.food_code}`
+            );
+            continue;
+          }
+
+          // Calculate nutritional values based on quantity
+          const quantity = parseFloat(food.quantity);
+          const foodWithNutrition = {
+            ...food,
+            calories:
+              (nutritionData.calories * quantity) / nutritionData.quantity,
+            proteins:
+              (nutritionData.proteins * quantity) / nutritionData.quantity,
+            carbs: (nutritionData.carbs * quantity) / nutritionData.quantity,
+            fats: (nutritionData.fats * quantity) / nutritionData.quantity,
+          };
+
+          const row = Food.setupFoodRow(foodWithNutrition, mealType, true);
+          tbody.appendChild(row);
+        } catch (error) {
+          console.error(
+            `Erro ao processar alimento ${food.food_code}:`,
+            error
+          );
+          // Continua com o próximo alimento mesmo se houver erro
           continue;
         }
-
-        // Calculate nutritional values based on quantity
-        const quantity = parseFloat(food.quantity);
-        const foodWithNutrition = {
-          ...food,
-          calories:
-            (nutritionData.calories * quantity) / nutritionData.quantity,
-          proteins:
-            (nutritionData.proteins * quantity) / nutritionData.quantity,
-          carbs: (nutritionData.carbs * quantity) / nutritionData.quantity,
-          fats: (nutritionData.fats * quantity) / nutritionData.quantity,
-        };
-
-        const row = Food.setupFoodRow(foodWithNutrition, mealType, true);
-        tbody.appendChild(row);
       }
 
       // Update totals
@@ -419,13 +438,25 @@ class Food {
           return true;
         });
 
-        uniqueData.forEach((food) => {
+        // Armazena os dados no searchResults para acesso posterior
+        searchResults._foodData = uniqueData;
+
+        uniqueData.forEach((food, index) => {
           const div = document.createElement("div");
           div.className = "search-result p-2 border-bottom";
           div.textContent = food.food_code;
+          div.dataset.index = index;
+          div.dataset.foodCode = food.food_code;
           div.onclick = () => {
             Food.selectFood(input, food);
             searchResults.classList.add("d-none");
+          };
+          // Adiciona hover effect
+          div.onmouseenter = () => {
+            // Remove active de todos
+            searchResults.querySelectorAll(".search-result").forEach(r => r.classList.remove("active"));
+            // Adiciona active no item atual
+            div.classList.add("active");
           };
           searchResults.appendChild(div);
         });
@@ -467,9 +498,9 @@ class Food {
     if (code.value) {
       try {
         const data = await makeDietApiCall(
-          `/api/food_nutrition/${encodeURIComponent(
+          `/api/food_nutrition?code=${encodeURIComponent(
             code.value
-          )}?quantity=${quantity}`
+          )}&quantity=${quantity}`
         );
         new Food().setNutritionalValues(row, data);
         const saveButton = row.querySelector(".save-food");
@@ -623,9 +654,77 @@ class Food {
     }
 
     if (!isFromTemplate) {
-      row
-        .querySelector(".food-code")
-        ?.addEventListener("input", (e) => Food.searchFood(e.target));
+      const foodCodeInput = row.querySelector(".food-code");
+      if (foodCodeInput) {
+        foodCodeInput.addEventListener("input", (e) => Food.searchFood(e.target));
+        
+        // Adiciona navegação por teclado nas sugestões
+        foodCodeInput.addEventListener("keydown", (e) => {
+          const searchResults = document.querySelector("#global-search-results");
+          if (!searchResults || searchResults.classList.contains("d-none")) {
+            return; // Se não há resultados visíveis, não faz nada
+          }
+          
+          const results = searchResults.querySelectorAll(".search-result");
+          if (results.length === 0) return;
+          
+          const activeItem = searchResults.querySelector(".search-result.active");
+          
+          switch (e.key) {
+            case "ArrowDown":
+              e.preventDefault();
+              if (!activeItem) {
+                // Se não há item ativo, ativa o primeiro
+                results[0].classList.add("active");
+                results[0].scrollIntoView({ block: "nearest", behavior: "smooth" });
+              } else {
+                // Move para o próximo
+                const currentIndex = parseInt(activeItem.dataset.index || 0);
+                const nextIndex = currentIndex + 1;
+                if (nextIndex < results.length) {
+                  activeItem.classList.remove("active");
+                  results[nextIndex].classList.add("active");
+                  results[nextIndex].scrollIntoView({ block: "nearest", behavior: "smooth" });
+                }
+              }
+              break;
+              
+            case "ArrowUp":
+              e.preventDefault();
+              if (activeItem) {
+                const currentIndex = parseInt(activeItem.dataset.index || 0);
+                const prevIndex = currentIndex - 1;
+                if (prevIndex >= 0) {
+                  activeItem.classList.remove("active");
+                  results[prevIndex].classList.add("active");
+                  results[prevIndex].scrollIntoView({ block: "nearest", behavior: "smooth" });
+                } else {
+                  // Se está no primeiro, remove o active
+                  activeItem.classList.remove("active");
+                }
+              }
+              break;
+              
+            case "Enter":
+              if (activeItem) {
+                e.preventDefault();
+                const foodCode = activeItem.dataset.foodCode || activeItem.textContent.trim();
+                const foodData = searchResults._foodData || [];
+                const food = foodData.find(f => f.food_code === foodCode);
+                if (food) {
+                  Food.selectFood(foodCodeInput, food);
+                  searchResults.classList.add("d-none");
+                }
+              }
+              break;
+              
+            case "Escape":
+              searchResults.classList.add("d-none");
+              break;
+          }
+        });
+      }
+      
       row
         .querySelector(".quantity")
         ?.addEventListener("input", (e) => Food.updateNutrition(e.target));

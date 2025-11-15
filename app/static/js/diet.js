@@ -65,16 +65,10 @@ function collectMealsData() {
   return mealsData;
 }
 
-function showDietSuggestions(input) {
+async function showDietSuggestions(input) {
   const value = input.value.toLowerCase().trim();
   const suggestionsDiv = document.getElementById("dietSuggestions");
-  const savedDiets = Array.from(
-    document.querySelectorAll("#loadDietModal .list-group-item button.btn-link")
-  ).map((btn) => ({
-    id: btn.getAttribute("onclick").match(/loadDiet\((\d+)\)/)[1],
-    name: btn.textContent.trim(),
-  }));
-
+  
   suggestionsDiv.innerHTML = "";
 
   if (!value) {
@@ -82,20 +76,29 @@ function showDietSuggestions(input) {
     return;
   }
 
-  const matches = savedDiets.filter((diet) =>
-    diet.name.toLowerCase().includes(value)
-  );
+  try {
+    // Busca as dietas da API para garantir que está atualizado
+    const data = await makeDietApiCall("/api/list_diets");
+    const savedDiets = data.success && data.diets ? data.diets : [];
 
-  matches.forEach((diet) => {
-    const div = document.createElement("div");
-    div.className = "diet-suggestion-item";
-    div.textContent = diet.name;
-    div.dataset.id = diet.id;
-    div.onclick = () => selectDietSuggestion(diet.name, diet.id);
-    suggestionsDiv.appendChild(div);
-  });
+    const matches = savedDiets.filter((diet) =>
+      diet.name.toLowerCase().includes(value)
+    );
 
-  suggestionsDiv.classList.toggle("d-none", matches.length === 0);
+    matches.forEach((diet) => {
+      const div = document.createElement("div");
+      div.className = "diet-suggestion-item";
+      div.textContent = diet.name;
+      div.dataset.id = diet.id;
+      div.onclick = () => selectDietSuggestion(diet.name, diet.id);
+      suggestionsDiv.appendChild(div);
+    });
+
+    suggestionsDiv.classList.toggle("d-none", matches.length === 0);
+  } catch (error) {
+    console.error("Erro ao buscar sugestões de dieta:", error);
+    suggestionsDiv.classList.add("d-none");
+  }
 }
 
 function selectDietSuggestion(name, id) {
@@ -112,6 +115,56 @@ function getDietInfo() {
     dietName,
     existingDietId: dietNameInput.dataset.selectedId || null,
   };
+}
+
+async function updateDietList() {
+  try {
+    const data = await makeDietApiCall("/api/list_diets");
+    const listGroup = document.querySelector("#loadDietModal .list-group");
+    
+    if (!listGroup) {
+      return; // Modal ainda não foi renderizado
+    }
+    
+    // Limpa a lista atual
+    listGroup.innerHTML = "";
+    
+    if (data.success && data.diets && data.diets.length > 0) {
+      // Adiciona cada dieta à lista
+      data.diets.forEach((diet) => {
+        const listItem = document.createElement("div");
+        listItem.className = "list-group-item d-flex justify-content-between align-items-center";
+        
+        const loadButton = document.createElement("button");
+        loadButton.type = "button";
+        loadButton.className = "btn btn-link text-decoration-none flex-grow-1 text-start";
+        loadButton.onclick = () => loadDiet(diet.id);
+        loadButton.textContent = diet.name;
+        
+        const deleteButton = document.createElement("button");
+        deleteButton.type = "button";
+        deleteButton.className = "btn btn-danger btn-sm";
+        deleteButton.onclick = () => deleteDiet(diet.id);
+        deleteButton.title = "Remover dieta";
+        
+        const deleteIcon = document.createElement("i");
+        deleteIcon.className = "fas fa-trash";
+        deleteButton.appendChild(deleteIcon);
+        
+        listItem.appendChild(loadButton);
+        listItem.appendChild(deleteButton);
+        listGroup.appendChild(listItem);
+      });
+    } else {
+      // Se não houver dietas, mostra uma mensagem
+      const emptyMessage = document.createElement("div");
+      emptyMessage.className = "list-group-item text-muted text-center";
+      emptyMessage.textContent = "Nenhuma dieta modelo salva";
+      listGroup.appendChild(emptyMessage);
+    }
+  } catch (error) {
+    console.error("Erro ao atualizar lista de dietas:", error);
+  }
 }
 
 async function saveDiet() {
@@ -139,6 +192,9 @@ async function saveDiet() {
 
     closeModal("saveDietModal");
     alert(response.message || "Dieta modelo salva com sucesso!");
+    
+    // Atualiza a lista de dietas modelo após salvar
+    await updateDietList();
   } catch (error) {
     alert("Erro ao salvar dieta modelo: " + error.message);
   }
@@ -324,12 +380,10 @@ async function deleteDiet(dietId) {
       method: "DELETE",
       headers: { "Content-Type": "application/json" },
     });
-    const dietItem = document
-      .querySelector(`[onclick="deleteDiet(${dietId})"]`)
-      .closest(".list-group-item");
-    dietItem.remove();
-    const remaining = document.querySelectorAll(".list-group-item");
-    if (remaining.length === 0) closeModal("loadDietModal");
+    
+    // Atualiza a lista de dietas após deletar
+    await updateDietList();
+    
     alert("Dieta excluída com sucesso!");
   } catch (error) {
     handleApiError(error, "Erro ao excluir dieta");
@@ -367,7 +421,18 @@ window.Diet = {
   saveDailyDiet,
   loadDiet,
   deleteDiet,
+  updateDietList,
 };
 
 // Torna saveDailyDiet globalmente acessível
 window.saveDailyDiet = saveDailyDiet;
+
+// Atualiza a lista de dietas quando o modal de carregar dieta for aberto
+document.addEventListener('DOMContentLoaded', function() {
+  const loadDietModal = document.getElementById('loadDietModal');
+  if (loadDietModal) {
+    loadDietModal.addEventListener('show.bs.modal', function() {
+      updateDietList();
+    });
+  }
+});

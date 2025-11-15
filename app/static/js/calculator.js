@@ -141,8 +141,15 @@ function searchFood(input) {
             input.value = food.food_code;
             searchResults.classList.add("d-none");
 
-            fetch(`/api/food_nutrition/${food.food_code}`)
-              .then((res) => res.json())
+            fetch(`/api/food_nutrition?code=${encodeURIComponent(food.food_code)}`)
+              .then((res) => {
+                // Verifica se a resposta é JSON
+                const contentType = res.headers.get("content-type");
+                if (!contentType || !contentType.includes("application/json")) {
+                  throw new Error("Resposta inválida da API");
+                }
+                return res.json();
+              })
               .then((foodData) => {
                 if (foodData.success) {
                   selectedFoods.set(food.food_code, {
