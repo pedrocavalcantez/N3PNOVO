@@ -21,7 +21,6 @@
         class="form-control" 
         style="width: auto;"
         value="{{ today.strftime('%Y-%m-%d') if today else '' }}"
-        onchange="changeDate(this.value)"
       />
     </div>
   </div>
@@ -710,6 +709,67 @@
   window.loadDietByDate = function(dateStr) {
     changeDate(dateStr);
   };
+
+  // Listener para o campo de data - só atualiza ao pressionar Enter ou ao sair do campo com data válida
+  document.addEventListener('DOMContentLoaded', function() {
+    const dietDateInput = document.getElementById('dietDate');
+    if (dietDateInput) {
+      // Armazena o valor inicial para comparar
+      let lastValidValue = dietDateInput.value;
+      let isTyping = false;
+      
+      // Detecta quando o usuário começa a digitar
+      dietDateInput.addEventListener('input', function() {
+        isTyping = true;
+      });
+      
+      // Atualiza quando Enter é pressionado
+      dietDateInput.addEventListener('keydown', function(e) {
+        if (e.key === 'Enter') {
+          e.preventDefault();
+          isTyping = false;
+          const currentValue = this.value;
+          // Verifica se a data está completa (formato YYYY-MM-DD)
+          if (currentValue && currentValue.match(/^\d{4}-\d{2}-\d{2}$/)) {
+            if (currentValue !== lastValidValue) {
+              lastValidValue = currentValue;
+              changeDate(currentValue);
+            }
+          }
+        }
+      });
+      
+      // Atualiza quando o campo perde o foco E a data está completa
+      dietDateInput.addEventListener('blur', function() {
+        isTyping = false;
+        const currentValue = this.value;
+        // Verifica se a data está completa (formato YYYY-MM-DD)
+        if (currentValue && currentValue.match(/^\d{4}-\d{2}-\d{2}$/)) {
+          if (currentValue !== lastValidValue) {
+            lastValidValue = currentValue;
+            changeDate(currentValue);
+          }
+        } else if (!currentValue) {
+          // Se o campo estiver vazio, restaura o último valor válido
+          this.value = lastValidValue;
+        }
+      });
+      
+      // Atualiza quando o campo é alterado pelo seletor de data (não por digitação)
+      dietDateInput.addEventListener('change', function() {
+        // Só atualiza se não estiver digitando (ou seja, foi pelo seletor de data)
+        if (!isTyping) {
+          const currentValue = this.value;
+          if (currentValue && currentValue.match(/^\d{4}-\d{2}-\d{2}$/)) {
+            if (currentValue !== lastValidValue) {
+              lastValidValue = currentValue;
+              changeDate(currentValue);
+            }
+          }
+        }
+      });
+    }
+  });
 </script>
 {% endblock %} {% block extra_css %}
 <link
