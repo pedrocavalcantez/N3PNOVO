@@ -253,6 +253,58 @@
   background-color: rgba(255, 255, 255, 0.1);
 }
 
+/* Dark Mode - Profile Page */
+[data-theme="dark"] .card-header.bg-white {
+  background-color: var(--card-background) !important;
+  color: var(--text-color);
+}
+
+[data-theme="dark"] .profile-card,
+[data-theme="dark"] .goals-card {
+  background-color: var(--card-background);
+  color: var(--text-color);
+}
+
+[data-theme="dark"] .profile-card .card-header,
+[data-theme="dark"] .goals-card .card-header {
+  background-color: var(--card-background) !important;
+  border-bottom-color: var(--border-color);
+  color: var(--text-color);
+}
+
+[data-theme="dark"] .profile-card .card-body,
+[data-theme="dark"] .goals-card .card-body {
+  background-color: var(--card-background);
+  color: var(--text-color);
+}
+
+[data-theme="dark"] .form-select {
+  background-color: #2d3238;
+  border-color: var(--border-color);
+  color: var(--text-color);
+}
+
+[data-theme="dark"] .form-select:focus {
+  background-color: #2d3238;
+  border-color: var(--primary-color);
+  color: var(--text-color);
+}
+
+[data-theme="dark"] .form-select option {
+  background-color: #2d3238;
+  color: var(--text-color);
+}
+
+[data-theme="dark"] .calories-goal {
+  background-color: #2d3238 !important;
+  color: var(--text-color);
+}
+
+[data-theme="dark"] .goal-badge {
+  background-color: var(--card-background);
+  color: var(--primary-color);
+}
+
 .progress-bar {
   transition: width 1s ease-out;
 }

@@ -794,6 +794,32 @@ body {
   background-color: rgba(180, 217, 87, 0.25);
 }
 
+[data-theme="dark"] #global-search-results,
+[data-theme="dark"] #global-search-results-calculator {
+  background-color: var(--card-background) !important;
+  border-color: var(--border-color) !important;
+  color: var(--text-color) !important;
+}
+
+[data-theme="dark"] #global-search-results .search-result,
+[data-theme="dark"] #global-search-results-calculator .search-result {
+  background-color: var(--card-background);
+  color: var(--text-color);
+  border-bottom-color: var(--border-color);
+}
+
+[data-theme="dark"] #global-search-results .search-result:hover,
+[data-theme="dark"] #global-search-results-calculator .search-result:hover {
+  background-color: rgba(180, 217, 87, 0.15);
+  color: var(--text-color);
+}
+
+[data-theme="dark"] #global-search-results .search-result.active,
+[data-theme="dark"] #global-search-results-calculator .search-result.active {
+  background-color: rgba(180, 217, 87, 0.25);
+  color: var(--text-color);
+}
+
 [data-theme="dark"] .nutrient-box {
   background-color: var(--card-background);
   border-color: var(--border-color);
