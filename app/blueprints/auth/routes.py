@@ -161,15 +161,21 @@ def forgot_password():
             token = user.generate_password_reset_token()
             db.session.commit()
             
+            # Log the attempt
+            from flask import current_app
+            current_app.logger.info(f"Attempting to send password reset email to {user.email}")
+            
             # Send reset email
             email_sent = send_password_reset_email(user, token)
             if email_sent:
+                current_app.logger.info(f"Password reset email sent successfully to {user.email}")
                 flash(
                     "Um email com instruções para redefinir sua senha foi enviado. "
                     "Verifique sua caixa de entrada.",
                     "success"
                 )
             else:
+                current_app.logger.error(f"Failed to send password reset email to {user.email}")
                 flash(
                     "Não foi possível enviar o email de redefinição de senha. "
                     "Por favor, tente novamente mais tarde ou entre em contato com o suporte.",

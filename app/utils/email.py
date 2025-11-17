@@ -1,6 +1,27 @@
-from flask import render_template, current_app
+from flask import render_template, current_app, request, has_request_context
 from flask_mail import Message
 from app import mail
+
+
+def get_app_url():
+    """Get the application URL, auto-detecting from request if needed"""
+    app_url = current_app.config.get('APP_URL', '')
+    
+    # If APP_URL is not set or is localhost, try to detect from request
+    if not app_url or 'localhost' in app_url or '127.0.0.1' in app_url:
+        if has_request_context() and request and request.host_url:
+            # Remove trailing slash
+            app_url = request.host_url.rstrip('/')
+            # Use https if the request was https (common on Render)
+            if request.is_secure or request.headers.get('X-Forwarded-Proto') == 'https':
+                app_url = app_url.replace('http://', 'https://', 1)
+            current_app.logger.info(f"Auto-detected APP_URL: {app_url}")
+        else:
+            # Fallback to localhost if no request context
+            app_url = app_url or "http://localhost:5000"
+            current_app.logger.warning(f"Using fallback APP_URL: {app_url}")
+    
+    return app_url
 
 
 def send_email(subject, sender, recipients, text_body, html_body):
@@ -21,15 +42,17 @@ def send_email(subject, sender, recipients, text_body, html_body):
     msg.html = html_body
     try:
         mail.send(msg)
+        current_app.logger.info(f"Email sent successfully to {recipients}")
         return True
     except Exception as e:
-        current_app.logger.error(f"Error sending email: {str(e)}")
+        current_app.logger.error(f"Error sending email to {recipients}: {str(e)}", exc_info=True)
         return False
 
 
 def send_confirmation_email(user, token):
     """Send email confirmation email to user"""
-    confirmation_url = f"{current_app.config['APP_URL']}/auth/confirm_email/{token}"
+    app_url = get_app_url()
+    confirmation_url = f"{app_url}/auth/confirm_email/{token}"
     
     subject = "Confirme seu email - N3P"
     
@@ -65,7 +88,8 @@ Equipe N3P
 
 def send_password_reset_email(user, token):
     """Send password reset email to user"""
-    reset_url = f"{current_app.config['APP_URL']}/auth/reset_password/{token}"
+    app_url = get_app_url()
+    reset_url = f"{app_url}/auth/reset_password/{token}"
     
     subject = "Redefinir sua senha - N3P"
     
