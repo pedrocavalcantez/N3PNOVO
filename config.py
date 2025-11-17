@@ -30,3 +30,17 @@ class Config:
     # Custom Config
     ITEMS_PER_PAGE = 10
     MAX_SEARCH_RESULTS = 5
+
+    # Email Configuration
+    MAIL_SERVER = os.environ.get("MAIL_SERVER") or "smtp.gmail.com"
+    MAIL_PORT = int(os.environ.get("MAIL_PORT") or 587)
+    MAIL_USE_TLS = os.environ.get("MAIL_USE_TLS", "true").lower() in ["true", "on", "1"]
+    MAIL_USERNAME = "n3psa7@gmail.com"  # os.environ.get("MAIL_USERNAME")
+    MAIL_PASSWORD = "mcor eush curw fhmu"  # os.environ.get("MAIL_PASSWORD")
+    # Default sender - use MAIL_DEFAULT_SENDER env var, or MAIL_USERNAME, or a default
+    MAIL_DEFAULT_SENDER = (
+        os.environ.get("MAIL_DEFAULT_SENDER") or MAIL_USERNAME or "noreply@n3p.com"
+    )
+
+    # App URL for email links
+    APP_URL = os.environ.get("APP_URL") or "http://localhost:5000"

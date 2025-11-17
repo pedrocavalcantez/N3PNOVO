@@ -1,3 +1,3 @@
-from .auth import LoginForm, SignupForm, EditProfileForm
+from .auth import LoginForm, SignupForm, EditProfileForm, ForgotPasswordForm, ResetPasswordForm
 
-__all__ = ["LoginForm", "SignupForm", "EditProfileForm"]
+__all__ = ["LoginForm", "SignupForm", "EditProfileForm", "ForgotPasswordForm", "ResetPasswordForm"]

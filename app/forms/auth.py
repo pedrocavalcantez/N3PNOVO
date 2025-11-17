@@ -70,6 +70,7 @@ class SignupForm(FlaskForm):
     objetivo = SelectField(
         "Objetivo", choices=list(OBJECTIVE_DISPLAY.items()), validators=[DataRequired()]
     )
+    submit = SubmitField("Criar Conta")
 
     def validate_username(self, field):
         """Check if username is already taken"""
@@ -80,6 +81,33 @@ class SignupForm(FlaskForm):
         """Check if email is already taken"""
         if User.query.filter_by(email=field.data).first():
             raise ValidationError("Este email já está em uso.")
+
+    def validate_confirm_password(self, field):
+        """Check if passwords match"""
+        if field.data != self.password.data:
+            raise ValidationError("As senhas não coincidem.")
+
+
+class ForgotPasswordForm(FlaskForm):
+    """Form for requesting password reset"""
+
+    email = StringField("Email", validators=[DataRequired(), Length(max=120)])
+    submit = SubmitField("Enviar Link de Redefinição")
+
+    def validate_email(self, field):
+        """Check if email exists in database"""
+        if not User.query.filter_by(email=field.data).first():
+            raise ValidationError("Este email não está cadastrado em nossa base de dados.")
+
+
+class ResetPasswordForm(FlaskForm):
+    """Form for resetting password"""
+
+    password = PasswordField("Nova Senha", validators=[DataRequired(), Length(min=6)])
+    confirm_password = PasswordField(
+        "Confirmar Nova Senha", validators=[DataRequired(), Length(min=6)]
+    )
+    submit = SubmitField("Redefinir Senha")
 
     def validate_confirm_password(self, field):
         """Check if passwords match"""

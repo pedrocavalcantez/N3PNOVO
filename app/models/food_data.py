@@ -7,7 +7,7 @@ class FoodData(db.Model):
     __tablename__ = "food_data"
 
     id = db.Column(db.Integer, primary_key=True)
-    code = db.Column(db.String(20), unique=True, nullable=False)  # Food code/identifier
+    code = db.Column(db.String(255), unique=True, nullable=False)  # Food code/identifier (increased from 20 to support full codes)
     name = db.Column(db.String(100), nullable=False)  # Food name
     quantity = db.Column(db.Float, nullable=False)  # Default quantity
     calories = db.Column(db.Float, nullable=False)

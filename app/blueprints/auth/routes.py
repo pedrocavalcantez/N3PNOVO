@@ -4,7 +4,8 @@ from urllib.parse import urlparse
 from app import db
 from app.blueprints.auth import bp
 from app.models import User
-from app.forms import LoginForm, SignupForm, EditProfileForm
+from app.forms import LoginForm, SignupForm, EditProfileForm, ForgotPasswordForm, ResetPasswordForm
+from app.utils.email import send_confirmation_email, send_password_reset_email
 
 
 @bp.route("/login", methods=["GET", "POST"])
@@ -16,8 +17,17 @@ def login():
     if form.validate_on_submit():
         user = User.query.filter_by(username=form.username.data).first()
         if user is None or not user.check_password(form.password.data):
-            flash("Nome de usuário ou senha inválidos", "danger")
-            return redirect(url_for("auth.login"))
+            flash("Nome de usuário ou senha inválidos. Por favor, verifique suas credenciais e tente novamente.", "danger")
+            return render_template("auth/login.html", title="Login", form=form)
+
+        # Check if email is confirmed
+        if not user.email_confirmed:
+            flash(
+                "Por favor, confirme seu email antes de fazer login. "
+                "Verifique sua caixa de entrada ou solicite um novo email de confirmação.",
+                "warning"
+            )
+            return render_template("auth/login.html", title="Login", form=form)
 
         login_user(user)
         next_page = request.args.get("next")
@@ -52,16 +62,162 @@ def signup():
                 objetivo=form.objetivo.data,
             )
             user.set_password(form.password.data)
+            
+            # Generate confirmation token
+            token = user.generate_confirmation_token()
+            
             db.session.add(user)
             db.session.commit()
-            flash("Cadastro realizado com sucesso!", "success")
+            
+            # Send confirmation email
+            email_sent = send_confirmation_email(user, token)
+            if email_sent:
+                flash(
+                    "Cadastro realizado com sucesso! Por favor, verifique seu email para confirmar sua conta.",
+                    "success"
+                )
+            else:
+                # User is created but email failed - still allow them to proceed
+                flash(
+                    "Cadastro realizado, mas não foi possível enviar o email de confirmação. "
+                    "Por favor, configure o email ou solicite um novo email de confirmação mais tarde.",
+                    "warning"
+                )
+            
             return redirect(url_for("auth.login"))
         except Exception as e:
             db.session.rollback()
-            flash("Erro ao criar usuário. Por favor, verifique os dados.", "danger")
+            import traceback
+            print(f"Error creating user: {str(e)}")
+            print(traceback.format_exc())
+            flash(f"Erro ao criar usuário: {str(e)}", "danger")
             return redirect(url_for("auth.signup"))
 
     return render_template("auth/signup.html", title="Cadastro", form=form)
+
+
+@bp.route("/confirm_email/<token>")
+def confirm_email(token):
+    """Handle email confirmation"""
+    user = User.query.filter_by(confirmation_token=token).first()
+    
+    if not user:
+        flash("Token de confirmação inválido ou expirado.", "danger")
+        return redirect(url_for("auth.login"))
+    
+    success, message = user.confirm_email(token)
+    
+    if success:
+        db.session.commit()
+        flash(message, "success")
+        return redirect(url_for("auth.login"))
+    else:
+        flash(message, "danger")
+        return redirect(url_for("auth.login"))
+
+
+@bp.route("/resend_confirmation", methods=["GET", "POST"])
+def resend_confirmation():
+    """Resend confirmation email"""
+    if request.method == "POST":
+        email = request.form.get("email")
+        user = User.query.filter_by(email=email).first()
+        
+        if not user:
+            flash("Email não encontrado.", "danger")
+            return redirect(url_for("auth.resend_confirmation"))
+        
+        if user.email_confirmed:
+            flash("Este email já foi confirmado.", "info")
+            return redirect(url_for("auth.login"))
+        
+        # Generate new token
+        token = user.generate_confirmation_token()
+        db.session.commit()
+        
+        # Send email
+        email_sent = send_confirmation_email(user, token)
+        if email_sent:
+            flash("Email de confirmação reenviado! Verifique sua caixa de entrada.", "success")
+        else:
+            flash("Erro ao enviar email. Por favor, verifique a configuração de email.", "danger")
+        
+        return redirect(url_for("auth.login"))
+    
+    return render_template("auth/resend_confirmation.html", title="Reenviar Confirmação")
+
+
+@bp.route("/forgot_password", methods=["GET", "POST"])
+def forgot_password():
+    """Handle password reset request"""
+    if current_user.is_authenticated:
+        return redirect(url_for("main.dashboard"))
+    
+    form = ForgotPasswordForm()
+    if form.validate_on_submit():
+        user = User.query.filter_by(email=form.email.data).first()
+        if user:
+            # Generate reset token
+            token = user.generate_password_reset_token()
+            db.session.commit()
+            
+            # Send reset email
+            email_sent = send_password_reset_email(user, token)
+            if email_sent:
+                flash(
+                    "Um email com instruções para redefinir sua senha foi enviado. "
+                    "Verifique sua caixa de entrada.",
+                    "success"
+                )
+            else:
+                flash(
+                    "Não foi possível enviar o email de redefinição de senha. "
+                    "Por favor, tente novamente mais tarde ou entre em contato com o suporte.",
+                    "danger"
+                )
+        else:
+            # Don't reveal if email exists or not (security best practice)
+            flash(
+                "Se o email estiver cadastrado, você receberá um link para redefinir sua senha.",
+                "info"
+            )
+        
+        return redirect(url_for("auth.login"))
+    
+    return render_template("auth/forgot_password.html", title="Esqueci minha senha", form=form)
+
+
+@bp.route("/reset_password/<token>", methods=["GET", "POST"])
+def reset_password(token):
+    """Handle password reset with token"""
+    if current_user.is_authenticated:
+        return redirect(url_for("main.dashboard"))
+    
+    user = User.query.filter_by(password_reset_token=token).first()
+    
+    if not user:
+        flash("Link de redefinição de senha inválido ou expirado.", "danger")
+        return redirect(url_for("auth.forgot_password"))
+    
+    # Verify token
+    success, message = user.verify_password_reset_token(token)
+    if not success:
+        flash(message, "danger")
+        return redirect(url_for("auth.forgot_password"))
+    
+    form = ResetPasswordForm()
+    if form.validate_on_submit():
+        # Reset password
+        success, message = user.reset_password(token, form.password.data)
+        if success:
+            db.session.commit()
+            flash("Sua senha foi redefinida com sucesso! Você já pode fazer login.", "success")
+            return redirect(url_for("auth.login"))
+        else:
+            flash(message, "danger")
+            return redirect(url_for("auth.forgot_password"))
+    
+    return render_template("auth/reset_password.html", title="Redefinir Senha", form=form, token=token)
 
 
 @bp.route("/logout")

@@ -2,7 +2,8 @@ from flask_login import UserMixin
 from werkzeug.security import generate_password_hash, check_password_hash
 from app import db
 from app.constants import ACTIVITY_FACTORS, OBJECTIVES, GENDER_CHOICES
-from datetime import datetime
+from datetime import datetime, timedelta
+import secrets
 
 
 class User(UserMixin, db.Model):
@@ -13,7 +14,7 @@ class User(UserMixin, db.Model):
     id = db.Column(db.Integer, primary_key=True)
     username = db.Column(db.String(80), unique=True, nullable=False)
     email = db.Column(db.String(120), unique=True, nullable=False)
-    password_hash = db.Column(db.String(128))
+    password_hash = db.Column(db.String(255))  # Increased to support longer scrypt hashes
     created_at = db.Column(db.DateTime, default=datetime.utcnow)
     updated_at = db.Column(db.DateTime, default=datetime.utcnow, onupdate=datetime.utcnow)
     nome = db.Column(db.String(100), nullable=False)
@@ -26,6 +27,15 @@ class User(UserMixin, db.Model):
     fator_atividade = db.Column(db.String(20), nullable=False)
     objetivo = db.Column(db.String(50), nullable=False)
     admin = db.Column(db.Boolean, nullable=False, default=False)
+
+    # Email confirmation
+    email_confirmed = db.Column(db.Boolean, nullable=False, default=False)
+    confirmation_token = db.Column(db.String(100), unique=True, nullable=True)
+    confirmation_token_expires = db.Column(db.DateTime, nullable=True)
+
+    # Password reset
+    password_reset_token = db.Column(db.String(100), unique=True, nullable=True)
+    password_reset_token_expires = db.Column(db.DateTime, nullable=True)
 
     # Nutrition goals
     calories_goal = db.Column(db.Float, nullable=True)
@@ -64,10 +74,14 @@ class User(UserMixin, db.Model):
     def __init__(self, **kwargs):
         super(User, self).__init__(**kwargs)
         # Set default goals based on calculated values
-        if not self.calories_goal and all(
-            [self.peso, self.altura, self.idade, self.sexo]
-        ):
-            self.update_goals()
+        # Only calculate if all required fields are present and goals aren't already set
+        if (not self.calories_goal and 
+            all([self.peso, self.altura, self.idade, self.sexo, self.fator_atividade, self.objetivo])):
+            try:
+                self.update_goals()
+            except Exception:
+                # If goal calculation fails, set defaults to avoid blocking user creation
+                pass
 
     def set_password(self, password):
         """Set the user's password"""
@@ -132,6 +146,57 @@ class User(UserMixin, db.Model):
         # Save changes to database
         if commit:
             db.session.commit()
+
+    def generate_confirmation_token(self):
+        """Generate a unique confirmation token for email verification"""
+        token = secrets.token_urlsafe(32)
+        self.confirmation_token = token
+        self.confirmation_token_expires = datetime.utcnow() + timedelta(days=1)  # Token expires in 24 hours
+        return token
+
+    def confirm_email(self, token):
+        """Confirm email using the provided token"""
+        if self.email_confirmed:
+            return False, "Email já foi confirmado"
+        
+        if not self.confirmation_token or self.confirmation_token != token:
+            return False, "Token inválido"
+        
+        if self.confirmation_token_expires and datetime.utcnow() > self.confirmation_token_expires:
+            return False, "Token expirado. Por favor, solicite um novo email de confirmação"
+        
+        self.email_confirmed = True
+        self.confirmation_token = None
+        self.confirmation_token_expires = None
+        return True, "Email confirmado com sucesso"
+
+    def generate_password_reset_token(self):
+        """Generate a unique password reset token"""
+        token = secrets.token_urlsafe(32)
+        self.password_reset_token = token
+        self.password_reset_token_expires = datetime.utcnow() + timedelta(hours=1)  # Token expires in 1 hour
+        return token
+
+    def verify_password_reset_token(self, token):
+        """Verify password reset token"""
+        if not self.password_reset_token or self.password_reset_token != token:
+            return False, "Token inválido"
+        
+        if self.password_reset_token_expires and datetime.utcnow() > self.password_reset_token_expires:
+            return False, "Token expirado. Por favor, solicite um novo link de redefinição de senha"
+        
+        return True, "Token válido"
+
+    def reset_password(self, token, new_password):
+        """Reset password using the provided token"""
+        success, message = self.verify_password_reset_token(token)
+        if not success:
+            return False, message
+        
+        self.set_password(new_password)
+        self.password_reset_token = None
+        self.password_reset_token_expires = None
+        return True, "Senha redefinida com sucesso"
 
     def __repr__(self):
         return f"<User {self.username}>"

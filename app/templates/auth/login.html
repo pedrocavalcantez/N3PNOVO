@@ -14,6 +14,24 @@
           <p>Entre com suas credenciais para continuar</p>
         </div>
         <div class="auth-body">
+          {% with messages = get_flashed_messages(with_categories=true) %} {% if
+          messages %} {% for category, message in messages %}
+          <div
+            class="alert alert-{{ 'danger' if category == 'error' else category }} alert-dismissible fade show"
+            role="alert"
+          >
+            <i
+              class="fas fa-{{ 'exclamation-triangle' if category == 'danger' or category == 'error' else 'info-circle' if category == 'info' else 'exclamation-circle' if category == 'warning' else 'check-circle' }} me-2"
+            ></i>
+            {{ message }}
+            <button
+              type="button"
+              class="btn-close"
+              data-bs-dismiss="alert"
+              aria-label="Close"
+            ></button>
+          </div>
+          {% endfor %} {% endif %} {% endwith %}
           <form class="auth-form" method="POST">
             {{ form.hidden_tag() }}
             <div class="mb-4">
@@ -43,6 +61,15 @@
               <p>
                 Não tem uma conta?
                 <a href="{{ url_for('auth.signup') }}">Registre-se</a>
+              </p>
+              <p>
+                <a href="{{ url_for('auth.forgot_password') }}">Esqueci minha senha</a>
+              </p>
+              <p>
+                Não recebeu o email de confirmação?
+                <a href="{{ url_for('auth.resend_confirmation') }}"
+                  >Reenviar confirmação</a
+                >
               </p>
             </div>
           </form>
