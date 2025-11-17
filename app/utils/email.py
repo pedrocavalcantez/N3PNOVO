@@ -1,6 +1,9 @@
 from flask import render_template, current_app, request, has_request_context
 from flask_mail import Message
 from app import mail
+import socket
+import threading
+import smtplib
 
 
 def get_app_url():
@@ -24,8 +27,39 @@ def get_app_url():
     return app_url
 
 
-def send_email(subject, sender, recipients, text_body, html_body):
-    """Send an email"""
+def _send_email_sync(subject, sender, recipients, text_body, html_body, app_context):
+    """Internal function to send email synchronously (called in thread)"""
+    with app_context:
+        from flask import current_app
+        from app import mail
+        
+        try:
+            # Set socket timeout to prevent hanging
+            socket.setdefaulttimeout(10)  # 10 second timeout
+            
+            msg = Message(subject, sender=sender, recipients=recipients)
+            msg.body = text_body
+            msg.html = html_body
+            
+            mail.send(msg)
+            current_app.logger.info(f"Email sent successfully to {recipients}")
+            return True
+        except socket.timeout:
+            current_app.logger.error(f"Email sending timeout for {recipients}")
+            return False
+        except smtplib.SMTPException as e:
+            current_app.logger.error(f"SMTP error sending email to {recipients}: {str(e)}")
+            return False
+        except Exception as e:
+            current_app.logger.error(f"Error sending email to {recipients}: {str(e)}", exc_info=True)
+            return False
+        finally:
+            # Reset timeout
+            socket.setdefaulttimeout(None)
+
+
+def send_email(subject, sender, recipients, text_body, html_body, async_send=True):
+    """Send an email, optionally asynchronously to avoid blocking"""
     # Check if email is configured
     if not current_app.config.get('MAIL_USERNAME') or not current_app.config.get('MAIL_PASSWORD'):
         current_app.logger.warning("Email not configured (MAIL_USERNAME or MAIL_PASSWORD missing). Email sending disabled.")
@@ -37,16 +71,22 @@ def send_email(subject, sender, recipients, text_body, html_body):
             current_app.logger.error("No email sender configured")
             return False
     
-    msg = Message(subject, sender=sender, recipients=recipients)
-    msg.body = text_body
-    msg.html = html_body
-    try:
-        mail.send(msg)
-        current_app.logger.info(f"Email sent successfully to {recipients}")
+    # For production (Render), send asynchronously to avoid worker timeout
+    if async_send:
+        app_context = current_app.app_context()
+        thread = threading.Thread(
+            target=_send_email_sync,
+            args=(subject, sender, recipients, text_body, html_body, app_context),
+            daemon=True
+        )
+        thread.start()
+        # Return True immediately - email will be sent in background
+        # In production, we assume it will work
+        current_app.logger.info(f"Email sending started in background for {recipients}")
         return True
-    except Exception as e:
-        current_app.logger.error(f"Error sending email to {recipients}: {str(e)}", exc_info=True)
-        return False
+    else:
+        # Synchronous sending for local development
+        return _send_email_sync(subject, sender, recipients, text_body, html_body, current_app.app_context())
 
 
 def send_confirmation_email(user, token):
