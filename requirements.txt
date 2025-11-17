@@ -9,4 +9,5 @@ Flask-Migrate==4.0.5
 Flask-WTF==1.2.2 
 scipy==1.11.4
 numpy==1.26.2
-gunicorn==21.2.0 
+gunicorn==21.2.0
+psycopg2-binary==2.9.9 
