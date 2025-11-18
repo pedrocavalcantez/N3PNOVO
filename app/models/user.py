@@ -14,9 +14,13 @@ class User(UserMixin, db.Model):
     id = db.Column(db.Integer, primary_key=True)
     username = db.Column(db.String(80), unique=True, nullable=False)
     email = db.Column(db.String(120), unique=True, nullable=False)
-    password_hash = db.Column(db.String(255))  # Increased to support longer scrypt hashes
+    password_hash = db.Column(
+        db.String(255)
+    )  # Increased to support longer scrypt hashes
     created_at = db.Column(db.DateTime, default=datetime.utcnow)
-    updated_at = db.Column(db.DateTime, default=datetime.utcnow, onupdate=datetime.utcnow)
+    updated_at = db.Column(
+        db.DateTime, default=datetime.utcnow, onupdate=datetime.utcnow
+    )
     nome = db.Column(db.String(100), nullable=False)
     idade = db.Column(db.Integer, nullable=False)
     altura = db.Column(db.Float, nullable=False)  # altura em metros
@@ -75,8 +79,16 @@ class User(UserMixin, db.Model):
         super(User, self).__init__(**kwargs)
         # Set default goals based on calculated values
         # Only calculate if all required fields are present and goals aren't already set
-        if (not self.calories_goal and 
-            all([self.peso, self.altura, self.idade, self.sexo, self.fator_atividade, self.objetivo])):
+        if not self.calories_goal and all(
+            [
+                self.peso,
+                self.altura,
+                self.idade,
+                self.sexo,
+                self.fator_atividade,
+                self.objetivo,
+            ]
+        ):
             try:
                 self.update_goals()
             except Exception:
@@ -151,20 +163,28 @@ class User(UserMixin, db.Model):
         """Generate a unique confirmation token for email verification"""
         token = secrets.token_urlsafe(32)
         self.confirmation_token = token
-        self.confirmation_token_expires = datetime.utcnow() + timedelta(days=1)  # Token expires in 24 hours
+        self.confirmation_token_expires = datetime.utcnow() + timedelta(
+            days=1
+        )  # Token expires in 24 hours
         return token
 
     def confirm_email(self, token):
         """Confirm email using the provided token"""
         if self.email_confirmed:
             return False, "Email já foi confirmado"
-        
+
         if not self.confirmation_token or self.confirmation_token != token:
             return False, "Token inválido"
-        
-        if self.confirmation_token_expires and datetime.utcnow() > self.confirmation_token_expires:
-            return False, "Token expirado. Por favor, solicite um novo email de confirmação"
-        
+
+        if (
+            self.confirmation_token_expires
+            and datetime.utcnow() > self.confirmation_token_expires
+        ):
+            return (
+                False,
+                "Token expirado. Por favor, solicite um novo email de confirmação",
+            )
+
         self.email_confirmed = True
         self.confirmation_token = None
         self.confirmation_token_expires = None
@@ -174,17 +194,25 @@ class User(UserMixin, db.Model):
         """Generate a unique password reset token"""
         token = secrets.token_urlsafe(32)
         self.password_reset_token = token
-        self.password_reset_token_expires = datetime.utcnow() + timedelta(hours=1)  # Token expires in 1 hour
+        self.password_reset_token_expires = datetime.utcnow() + timedelta(
+            hours=1
+        )  # Token expires in 1 hour
         return token
 
     def verify_password_reset_token(self, token):
         """Verify password reset token"""
         if not self.password_reset_token or self.password_reset_token != token:
             return False, "Token inválido"
-        
-        if self.password_reset_token_expires and datetime.utcnow() > self.password_reset_token_expires:
-            return False, "Token expirado. Por favor, solicite um novo link de redefinição de senha"
-        
+
+        if (
+            self.password_reset_token_expires
+            and datetime.utcnow() > self.password_reset_token_expires
+        ):
+            return (
+                False,
+                "Token expirado. Por favor, solicite um novo link de redefinição de senha",
+            )
+
         return True, "Token válido"
 
     def reset_password(self, token, new_password):
@@ -192,7 +220,7 @@ class User(UserMixin, db.Model):
         success, message = self.verify_password_reset_token(token)
         if not success:
             return False, message
-        
+
         self.set_password(new_password)
         self.password_reset_token = None
         self.password_reset_token_expires = None

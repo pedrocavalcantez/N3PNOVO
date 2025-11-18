@@ -44,3 +44,9 @@ class Config:
 
     # App URL for email links
     APP_URL = os.environ.get("APP_URL") or "http://localhost:5000"
+
+    # OpenAI API Configuration
+    OPENAI_API_KEY = (
+        os.environ.get("OPENAI_API_KEY")
+        
+    )

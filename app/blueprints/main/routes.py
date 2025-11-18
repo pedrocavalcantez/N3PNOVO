@@ -115,6 +115,13 @@ def calculator():
     return render_template("main/calculator.html", MEAL_TYPES=MEAL_TYPES)
 
 
+@bp.route("/chat")
+@login_required
+def chat():
+    """Página do chatbot nutricional"""
+    return render_template("main/chat.html", title="Nutri AI - Chat")
+
+
 @bp.route("/meals")
 @login_required
 def meals():

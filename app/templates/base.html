@@ -33,6 +33,12 @@
       rel="stylesheet"
       href="{{ url_for('static', filename='css/auth.css') }}"
     />
+    {% if current_user.is_authenticated %}
+    <link
+      rel="stylesheet"
+      href="{{ url_for('static', filename='css/chat.css') }}"
+    />
+    {% endif %}
     {% block extra_css %}{% endblock %}
   </head>
   <body>
@@ -116,6 +122,94 @@
 
     <div class="container mt-4">{% block content %}{% endblock %}</div>
 
+    <!-- Nutri AI Modal -->
+    {% if current_user.is_authenticated %}
+    <div class="modal fade" id="nutriAIModal" tabindex="-1" aria-labelledby="nutriAIModalLabel" aria-hidden="true">
+      <div class="modal-dialog modal-dialog-centered modal-lg">
+        <div class="modal-content chat-modal-content">
+          <div class="modal-header chat-modal-header">
+            <h5 class="modal-title" id="nutriAIModalLabel">
+              <i class="fas fa-robot me-2"></i>Nutri AI
+            </h5>
+            <button type="button" class="btn-close btn-close-white" data-bs-dismiss="modal" aria-label="Close"></button>
+          </div>
+          <div class="modal-body p-0">
+            <div class="chat-container-modal">
+              <div class="chat-messages" id="chatMessages">
+                <div class="message assistant welcome-message">
+                  <div class="message-avatar">
+                    <i class="fas fa-robot"></i>
+                  </div>
+                  <div class="message-content">
+                    <div class="message-text">
+                      <p>Olá! 👋 Sou o Nutri AI, seu assistente nutricional personalizado.</p>
+                      <p>Posso ajudá-lo com:</p>
+                      <ul>
+                        <li>📊 Recomendações de dietas baseadas no seu perfil</li>
+                        <li>🍎 Dicas nutricionais personalizadas</li>
+                        <li>💪 Orientações sobre macronutrientes</li>
+                        <li>❓ Respostas sobre nutrição e alimentação saudável</li>
+                      </ul>
+                      <p>Como posso ajudá-lo hoje?</p>
+                    </div>
+                    <div class="message-time"></div>
+                  </div>
+                </div>
+              </div>
+
+              <div class="chat-input-container">
+                <div class="input-group">
+                  <input
+                    type="text"
+                    id="messageInput"
+                    class="form-control"
+                    placeholder="Digite sua pergunta aqui..."
+                    autocomplete="off"
+                  />
+                  <button class="btn btn-primary" id="sendButton" type="button">
+                    <i class="fas fa-paper-plane"></i>
+                  </button>
+                </div>
+                <div class="suggestions" id="suggestions">
+                  <span class="suggestion-label">Sugestões:</span>
+                  <button class="btn btn-sm btn-outline-secondary suggestion-btn" data-message="Me recomende uma dieta para o meu objetivo">
+                    Recomendar dieta
+                  </button>
+                  <button class="btn btn-sm btn-outline-secondary suggestion-btn" data-message="Quais alimentos são ricos em proteína?">
+                    Alimentos proteicos
+                  </button>
+                  <button class="btn btn-sm btn-outline-secondary suggestion-btn" data-message="Como posso atingir minhas metas de macronutrientes?">
+                    Atingir metas
+                  </button>
+                </div>
+              </div>
+
+              <div class="chat-loading" id="chatLoading" style="display: none;">
+                <div class="loading-dots">
+                  <span></span>
+                  <span></span>
+                  <span></span>
+                </div>
+              </div>
+            </div>
+          </div>
+        </div>
+      </div>
+    </div>
+
+    <!-- Floating Action Button for Nutri AI -->
+    <button
+      type="button"
+      class="btn btn-primary nutri-ai-fab"
+      data-bs-toggle="modal"
+      data-bs-target="#nutriAIModal"
+      title="Abrir Nutri AI"
+    >
+      <i class="fas fa-robot"></i>
+      <span class="fab-label">Nutri AI</span>
+    </button>
+    {% endif %}
+
     <script src="https://cdn.jsdelivr.net/npm/bootstrap@5.3.0/dist/js/bootstrap.bundle.min.js"></script>
     <!-- Theme Toggle Script -->
     <script>
@@ -160,6 +254,9 @@
           }
         });
     </script>
+    {% if current_user.is_authenticated %}
+    <script src="{{ url_for('static', filename='js/chat.js') }}"></script>
+    {% endif %}
     {% block extra_js %}{% endblock %}
   </body>
 </html>
