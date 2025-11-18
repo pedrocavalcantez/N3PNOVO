@@ -42,7 +42,10 @@ users.db
 
 # Environment variables
 .env
-.env.*
+# Permitir .env.example para ser commitado (template)
+!.env.example
+.env.local
+.env.*.local
 
 # Logs
 *.log

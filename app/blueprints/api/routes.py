@@ -2168,7 +2168,23 @@ DIRETRIZES GERAIS:
 
     try:
         # Inicializar cliente OpenAI
-        client = OpenAI(api_key=api_key)
+        # Garantir que apenas api_key seja passado (sem proxies ou outras configurações)
+        # Limpar qualquer configuração de proxy que possa estar sendo passada implicitamente
+        import os
+        # Remover temporariamente variáveis de ambiente de proxy se existirem
+        proxy_vars = ['HTTP_PROXY', 'HTTPS_PROXY', 'http_proxy', 'https_proxy', 'ALL_PROXY', 'all_proxy']
+        saved_proxies = {}
+        for var in proxy_vars:
+            if var in os.environ:
+                saved_proxies[var] = os.environ.pop(var)
+        
+        try:
+            # Inicializar cliente apenas com api_key
+            client = OpenAI(api_key=api_key)
+        finally:
+            # Restaurar variáveis de ambiente de proxy se existirem
+            for var, value in saved_proxies.items():
+                os.environ[var] = value
 
         # Chamada à API
         response = client.chat.completions.create(

@@ -9,8 +9,6 @@ from app.models import User, UserFood, Diet
 from app.models.meal_template import MealTemplate
 
 if __name__ == "__main__":
-    email = "pedrohen.fc@gmail.com"
-
     app = create_app()
     with app.app_context():
         user = User.query.filter_by(email=email).first()

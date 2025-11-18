@@ -3,6 +3,12 @@ from flask_sqlalchemy import SQLAlchemy
 from flask_login import LoginManager
 from flask_migrate import Migrate
 from flask_mail import Mail
+from dotenv import load_dotenv
+
+# IMPORTANTE: Carregar variáveis de ambiente ANTES de importar Config
+# Isso garante que o .env seja lido antes da classe Config ser criada
+load_dotenv()
+
 from config import Config
 
 # Inicialização das extensões
