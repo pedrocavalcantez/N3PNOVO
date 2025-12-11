@@ -11,23 +11,23 @@ from app.decorators import admin_required
 
 @bp.route("/")
 def index():
-    if current_user.is_authenticated:
-        return redirect(url_for("main.dashboard"))
+    # Não redireciona automaticamente - deixa o usuário escolher
     return render_template("main/index.html", title="Início")
 
 
 @bp.route("/guest")
 def guest():
-    return redirect(url_for("main.guest_dashboard"))
+    """Redireciona visitantes para o dashboard normal (que agora funciona sem login)"""
+    return redirect(url_for("main.dashboard"))
 
 
 @bp.route("/guest_dashboard")
 def guest_dashboard():
-    return render_template("main/guest_dashboard.html")
+    """Redireciona para o dashboard normal (que agora funciona sem login)"""
+    return redirect(url_for("main.dashboard"))
 
 
 @bp.route("/dashboard")
-@login_required
 def dashboard():
     from datetime import date, datetime
     
@@ -41,58 +41,59 @@ def dashboard():
     else:
         selected_date = date.today()
     
-    # Busca o diário da data selecionada (não busca dietas modelo ou de outros dias)
-    diary_for_date = (
-        Diet.query.filter_by(user_id=current_user.id, date=selected_date)
-        .first()
-    )
-
-    # Busca todas as dietas modelo do usuário (sem data)
-    saved_diets = (
-        Diet.query.filter_by(user_id=current_user.id, date=None)
-        .order_by(Diet.created_at.desc())
-        .all()
-    )
-
-    # Data de hoje para o seletor
-    today = date.today()
-    
-    # Inicializa os totais diários e metas do usuário
+    # Inicializa variáveis padrão
+    diary_for_date = None
+    saved_diets = []
     daily_totals = {"calories": 0, "proteins": 0, "carbs": 0, "fats": 0}
-
-    user_goals = {
-        "calories": current_user.calories_goal or 0,
-        "proteins": current_user.proteins_goal or 0,
-        "carbs": current_user.carbs_goal or 0,
-        "fats": current_user.fats_goal or 0,
-    }
-
-    # Inicializa as refeições como dicionário vazio (não lista)
+    user_goals = {"calories": 0, "proteins": 0, "carbs": 0, "fats": 0}
     meals = {}
-
     meal_totals = {}
+    
     for y in MEAL_TYPES.keys():
         meal_totals[y] = {}
         for x in MACRO_TYPES.keys():
             meal_totals[y][x] = 0
+    
+    # Se usuário estiver logado, carrega dados do banco
+    if current_user.is_authenticated:
+        # Busca o diário da data selecionada (não busca dietas modelo ou de outros dias)
+        diary_for_date = (
+            Diet.query.filter_by(user_id=current_user.id, date=selected_date)
+            .first()
+        )
 
-    # Se houver um diário para a data selecionada, carrega os dados das refeições
-    if diary_for_date and diary_for_date.meals_data:
-        meals = diary_for_date.meals_data or {}
-        # Atualiza os totais diários com base nas refeições
-        for meal_type, foods in meals.items():
-            for food in foods:
-                daily_totals["calories"] += float(food.get("calories", 0))
-                daily_totals["proteins"] += float(food.get("proteins", 0))
-                daily_totals["carbs"] += float(food.get("carbs", 0))
-                daily_totals["fats"] += float(food.get("fats", 0))
+        # Busca todas as dietas modelo do usuário (sem data)
+        saved_diets = (
+            Diet.query.filter_by(user_id=current_user.id, date=None)
+            .order_by(Diet.created_at.desc())
+            .all()
+        )
 
-                # Atualiza os totais por refeição
-                if meal_type in meal_totals:
-                    meal_totals[meal_type]["calories"] += float(food.get("calories", 0))
-                    meal_totals[meal_type]["proteins"] += float(food.get("proteins", 0))
-                    meal_totals[meal_type]["carbs"] += float(food.get("carbs", 0))
-                    meal_totals[meal_type]["fats"] += float(food.get("fats", 0))
+        # Metas do usuário
+        user_goals = {
+            "calories": current_user.calories_goal or 0,
+            "proteins": current_user.proteins_goal or 0,
+            "carbs": current_user.carbs_goal or 0,
+            "fats": current_user.fats_goal or 0,
+        }
+
+        # Se houver um diário para a data selecionada, carrega os dados das refeições
+        if diary_for_date and diary_for_date.meals_data:
+            meals = diary_for_date.meals_data or {}
+            # Atualiza os totais diários com base nas refeições
+            for meal_type, foods in meals.items():
+                for food in foods:
+                    daily_totals["calories"] += float(food.get("calories", 0))
+                    daily_totals["proteins"] += float(food.get("proteins", 0))
+                    daily_totals["carbs"] += float(food.get("carbs", 0))
+                    daily_totals["fats"] += float(food.get("fats", 0))
+
+                    # Atualiza os totais por refeição
+                    if meal_type in meal_totals:
+                        meal_totals[meal_type]["calories"] += float(food.get("calories", 0))
+                        meal_totals[meal_type]["proteins"] += float(food.get("proteins", 0))
+                        meal_totals[meal_type]["carbs"] += float(food.get("carbs", 0))
+                        meal_totals[meal_type]["fats"] += float(food.get("fats", 0))
 
     # Sempre renderiza, mas diet=None se não houver diário para a data selecionada
     return render_template(
@@ -110,26 +111,30 @@ def dashboard():
 
 
 @bp.route("/calculator")
-@login_required
 def calculator():
     return render_template("main/calculator.html", MEAL_TYPES=MEAL_TYPES)
 
 
 @bp.route("/chat")
-@login_required
 def chat():
     """Página do chatbot nutricional"""
     return render_template("main/chat.html", title="Nutri AI - Chat")
 
 
 @bp.route("/meals")
-@login_required
 def meals():
     """Página para gerenciar refeições salvas"""
-    # Filtra apenas templates do usuário atual
-    templates = MealTemplate.query.filter_by(
-        user_id=current_user.id
-    ).order_by(MealTemplate.meal_type, MealTemplate.name).all()
+    # Se usuário não estiver logado, mostra apenas templates globais
+    if current_user.is_authenticated:
+        # Filtra apenas templates do usuário atual
+        templates = MealTemplate.query.filter_by(
+            user_id=current_user.id
+        ).order_by(MealTemplate.meal_type, MealTemplate.name).all()
+    else:
+        # Para visitantes, mostra apenas templates globais (user_id is None)
+        templates = MealTemplate.query.filter_by(
+            user_id=None
+        ).order_by(MealTemplate.meal_type, MealTemplate.name).all()
     
     # Calcular valores nutricionais para cada template
     templates_with_nutrition = []
@@ -146,10 +151,12 @@ def meals():
                 
                 if food_code and quantity:
                     # Buscar dados nutricionais do alimento
-                    # First try user's custom foods
-                    food_data = UserFood.query.filter_by(
-                        code=food_code, user_id=current_user.id
-                    ).first()
+                    food_data = None
+                    if current_user.is_authenticated:
+                        # First try user's custom foods
+                        food_data = UserFood.query.filter_by(
+                            code=food_code, user_id=current_user.id
+                        ).first()
                     
                     # If not found, try global foods
                     if not food_data:
@@ -177,9 +184,12 @@ def meals():
 
 
 @bp.route("/history")
-@login_required
 def history():
     """Página para visualizar histórico de diários"""
+    # Se usuário não estiver logado, retorna lista vazia
+    if not current_user.is_authenticated:
+        return render_template("main/history.html", history_data=[])
+    
     # Busca todos os diários do usuário (com date não nulo), ordenados por data (mais recente primeiro)
     diaries = (
         Diet.query.filter_by(user_id=current_user.id)
@@ -217,13 +227,16 @@ def history():
 
 
 @bp.route("/api/meal_templates")
-@login_required
 def get_meal_templates():
     meal_type = request.args.get("meal_type")
-    # Filtra apenas templates do usuário atual ou templates globais (user_id is None)
-    query = MealTemplate.query.filter(
-        (MealTemplate.user_id == current_user.id) | (MealTemplate.user_id.is_(None))
-    )
+    # Se usuário estiver logado, mostra templates do usuário e globais
+    # Se não estiver logado, mostra apenas templates globais
+    if current_user.is_authenticated:
+        query = MealTemplate.query.filter(
+            (MealTemplate.user_id == current_user.id) | (MealTemplate.user_id.is_(None))
+        )
+    else:
+        query = MealTemplate.query.filter(MealTemplate.user_id.is_(None))
     
     if meal_type:
         query = query.filter_by(meal_type=meal_type)
@@ -235,13 +248,19 @@ def get_meal_templates():
 
 
 @bp.route("/api/meal_templates/<int:template_id>")
-@login_required
 def get_meal_template(template_id):
-    # Só permite acessar templates do próprio usuário ou templates globais
-    template = MealTemplate.query.filter(
-        MealTemplate.id == template_id,
-        ((MealTemplate.user_id == current_user.id) | (MealTemplate.user_id.is_(None)))
-    ).first_or_404()
+    # Se usuário estiver logado, pode acessar templates próprios ou globais
+    # Se não estiver logado, só pode acessar templates globais
+    if current_user.is_authenticated:
+        template = MealTemplate.query.filter(
+            MealTemplate.id == template_id,
+            ((MealTemplate.user_id == current_user.id) | (MealTemplate.user_id.is_(None)))
+        ).first_or_404()
+    else:
+        template = MealTemplate.query.filter(
+            MealTemplate.id == template_id,
+            MealTemplate.user_id.is_(None)
+        ).first_or_404()
     return jsonify({"success": True, "template": template.to_dict()})
 
 

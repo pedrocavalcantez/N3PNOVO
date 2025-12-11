@@ -62,27 +62,27 @@ endif %} {% block title %}{% endblock %} {% if request.args.get('complement') ==
           <input
             type="hidden"
             id="userWeight"
-            value="{{ current_user.peso }}"
+            value="{% if current_user.is_authenticated %}{{ current_user.peso or '' }}{% else %}0{% endif %}"
           />
           <input
             type="hidden"
             id="userCaloriesGoal"
-            value="{{ current_user.calories_goal }}"
+            value="{% if current_user.is_authenticated %}{{ current_user.calories_goal or '' }}{% else %}0{% endif %}"
           />
           <input
             type="hidden"
             id="userProteinsGoal"
-            value="{{ current_user.proteins_goal }}"
+            value="{% if current_user.is_authenticated %}{{ current_user.proteins_goal or '' }}{% else %}0{% endif %}"
           />
           <input
             type="hidden"
             id="userCarbsGoal"
-            value="{{ current_user.carbs_goal }}"
+            value="{% if current_user.is_authenticated %}{{ current_user.carbs_goal or '' }}{% else %}0{% endif %}"
           />
           <input
             type="hidden"
             id="userFatsGoal"
-            value="{{ current_user.fats_goal }}"
+            value="{% if current_user.is_authenticated %}{{ current_user.fats_goal or '' }}{% else %}0{% endif %}"
           />
           <input
             type="hidden"

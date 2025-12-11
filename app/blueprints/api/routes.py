@@ -10,7 +10,6 @@ from app.constants import MEAL_TYPES
 
 
 @bp.route("/search_food")
-@login_required
 def search_food():
     query = request.args.get("query", "").strip()
     print(query)
@@ -33,26 +32,28 @@ def search_food():
     else:
         foods = foods_start
 
-    # Search in UserFood (user's custom foods)
-    user_foods_start = (
-        UserFood.query.filter(
-            UserFood.user_id == current_user.id, UserFood.code.ilike(f"{query}%")
+    # Search in UserFood (user's custom foods) - only if user is authenticated
+    user_foods = []
+    if current_user.is_authenticated:
+        user_foods_start = (
+            UserFood.query.filter(
+                UserFood.user_id == current_user.id, UserFood.code.ilike(f"{query}%")
+            )
+            .limit(10)
+            .all()
         )
-        .limit(10)
-        .all()
-    )
 
-    if len(user_foods_start) < 10:
-        user_start_ids = [food.id for food in user_foods_start]
-        user_query_obj = UserFood.query.filter(
-            UserFood.user_id == current_user.id, UserFood.code.ilike(f"%{query}%")
-        )
-        if user_start_ids:
-            user_query_obj = user_query_obj.filter(~UserFood.id.in_(user_start_ids))
-        additional_user_foods = user_query_obj.limit(10 - len(user_foods_start)).all()
-        user_foods = user_foods_start + additional_user_foods
-    else:
-        user_foods = user_foods_start
+        if len(user_foods_start) < 10:
+            user_start_ids = [food.id for food in user_foods_start]
+            user_query_obj = UserFood.query.filter(
+                UserFood.user_id == current_user.id, UserFood.code.ilike(f"%{query}%")
+            )
+            if user_start_ids:
+                user_query_obj = user_query_obj.filter(~UserFood.id.in_(user_start_ids))
+            additional_user_foods = user_query_obj.limit(10 - len(user_foods_start)).all()
+            user_foods = user_foods_start + additional_user_foods
+        else:
+            user_foods = user_foods_start
 
     # Combine results (limit to 10 total)
     all_foods = foods + user_foods
@@ -71,7 +72,6 @@ def search_food():
 
 
 @bp.route("/food_nutrition", methods=["GET"])
-@login_required
 def get_food_nutrition():
     try:
         # Obtém o código do alimento do query parameter
@@ -81,8 +81,10 @@ def get_food_nutrition():
                 {"success": False, "error": "Código do alimento não fornecido"}
             ), 400
 
-        # First try to find in user's custom foods
-        user_food = UserFood.query.filter_by(code=code, user_id=current_user.id).first()
+        # First try to find in user's custom foods (only if authenticated)
+        user_food = None
+        if current_user.is_authenticated:
+            user_food = UserFood.query.filter_by(code=code, user_id=current_user.id).first()
 
         if user_food:
             quantity = float(request.args.get("quantity", user_food.quantity))
@@ -121,7 +123,6 @@ def get_food_nutrition():
 
 
 @bp.route("/add_food", methods=["POST"])
-@login_required
 def add_food():
     try:
         data = request.get_json()
@@ -135,8 +136,10 @@ def add_food():
         if not all([code, quantity is not None, meal_type]):
             return jsonify({"success": False, "error": "Missing required fields"}), 400
 
-        # First try to find in user's custom foods
-        user_food = UserFood.query.filter_by(code=code, user_id=current_user.id).first()
+        # First try to find in user's custom foods (only if authenticated)
+        user_food = None
+        if current_user.is_authenticated:
+            user_food = UserFood.query.filter_by(code=code, user_id=current_user.id).first()
 
         if user_food:
             # Calculate nutrition values based on quantity
@@ -190,11 +193,11 @@ def add_food():
 
 
 @bp.route("/delete_food/<int:food_id>", methods=["DELETE"])
-@login_required
 def delete_food(food_id):
     try:
         # In this case, we don't actually delete from the database
         # since we're just removing from the UI
+        # Works for both authenticated and guest users
         return jsonify({"success": True})
     except Exception as e:
         return jsonify({"success": False, "error": str(e)}), 500
@@ -1022,7 +1025,6 @@ def calculate_portions():
 
 
 @bp.route("/export_diet", methods=["POST"])
-@login_required
 def export_diet():
     try:
         # Get the diet data from the request
@@ -1054,14 +1056,22 @@ def export_diet():
             meal_names = MEAL_TYPES
 
             # Create summary DataFrame
-            # Get user info safely (handle missing attributes)
-            user_name = getattr(current_user, "nome", None) or getattr(
-                current_user, "username", "Usuário"
-            )
-            user_age = getattr(current_user, "idade", None)
-            user_height = getattr(current_user, "altura", None)
-            user_weight = getattr(current_user, "peso", None)
-            user_sex = getattr(current_user, "sexo", None)
+            # Get user info safely (handle missing attributes and guest users)
+            if current_user.is_authenticated:
+                user_name = getattr(current_user, "nome", None) or getattr(
+                    current_user, "username", "Usuário"
+                )
+                user_age = getattr(current_user, "idade", None)
+                user_height = getattr(current_user, "altura", None)
+                user_weight = getattr(current_user, "peso", None)
+                user_sex = getattr(current_user, "sexo", None)
+            else:
+                # Guest user - use default values
+                user_name = "Visitante"
+                user_age = None
+                user_height = None
+                user_weight = None
+                user_sex = None
 
             user_info = [f"Usuário: {user_name}"]
             if user_age:
