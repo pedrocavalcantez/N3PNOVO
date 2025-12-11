@@ -4,6 +4,8 @@ from app import mail
 import socket
 import threading
 import smtplib
+import os
+import requests
 
 
 def get_app_url():
@@ -102,7 +104,61 @@ def _send_email_sync(subject, sender, recipients, text_body, html_body, app_cont
             socket.setdefaulttimeout(None)
 
 
-def send_email(subject, sender, recipients, text_body, html_body, async_send=True):
+def _send_email_via_sendgrid_api(subject, sender, recipients, text_body, html_body):
+    """Send email using SendGrid REST API (more reliable than SMTP on Render)"""
+    api_key = current_app.config.get('MAIL_PASSWORD')
+    if not api_key or not api_key.startswith('SG.'):
+        current_app.logger.error("SendGrid API key not found or invalid format")
+        return False
+    
+    url = "https://api.sendgrid.com/v3/mail/send"
+    headers = {
+        "Authorization": f"Bearer {api_key}",
+        "Content-Type": "application/json"
+    }
+    
+    # Prepare email data
+    email_data = {
+        "personalizations": [{
+            "to": [{"email": email} for email in recipients]
+        }],
+        "from": {"email": sender},
+        "subject": subject,
+        "content": [
+            {
+                "type": "text/plain",
+                "value": text_body
+            },
+            {
+                "type": "text/html",
+                "value": html_body
+            }
+        ]
+    }
+    
+    try:
+        response = requests.post(url, json=email_data, headers=headers, timeout=10)
+        if response.status_code == 202:
+            current_app.logger.info(f"Email sent successfully via SendGrid API to {recipients}")
+            return True
+        else:
+            current_app.logger.error(
+                f"SendGrid API error: {response.status_code} - {response.text}. "
+                f"Recipients: {recipients}"
+            )
+            return False
+    except requests.exceptions.Timeout:
+        current_app.logger.error(f"SendGrid API timeout for {recipients}")
+        return False
+    except requests.exceptions.RequestException as e:
+        current_app.logger.error(f"SendGrid API request error for {recipients}: {str(e)}")
+        return False
+    except Exception as e:
+        current_app.logger.error(f"Unexpected error using SendGrid API for {recipients}: {str(e)}", exc_info=True)
+        return False
+
+
+def send_email(subject, sender, recipients, text_body, html_body, async_send=True, use_api=False):
     """Send an email, optionally asynchronously to avoid blocking"""
     # Check if email is configured
     mail_username = current_app.config.get('MAIL_USERNAME')
@@ -120,6 +176,44 @@ def send_email(subject, sender, recipients, text_body, html_body, async_send=Tru
         if not sender:
             current_app.logger.error("No email sender configured")
             return False
+    
+    # Check if we should use SendGrid API instead of SMTP
+    # API is more reliable on Render (avoids SMTP timeout issues)
+    mail_server = current_app.config.get('MAIL_SERVER', '')
+    is_sendgrid = 'sendgrid' in mail_server.lower()
+    is_render_env = os.environ.get('RENDER') is not None or 'render.com' in current_app.config.get('APP_URL', '').lower()
+    
+    # Use API if explicitly requested, or automatically if using SendGrid on Render
+    # This avoids SMTP timeout issues on Render
+    should_use_api = use_api or (is_sendgrid and is_render_env)
+    
+    if should_use_api:
+        current_app.logger.info(f"Using SendGrid API to send email to {recipients} (more reliable than SMTP on Render)")
+        if async_send:
+            # For async, run in thread
+            app_context = current_app.app_context()
+            result_container = {'success': False, 'error': None}
+            
+            def _send_api():
+                try:
+                    with app_context:
+                        result_container['success'] = _send_email_via_sendgrid_api(
+                            subject, sender, recipients, text_body, html_body
+                        )
+                except Exception as e:
+                    result_container['error'] = str(e)
+                    result_container['success'] = False
+            
+            thread = threading.Thread(target=_send_api, daemon=True)
+            thread.start()
+            thread.join(timeout=15)
+            
+            if result_container.get('error'):
+                current_app.logger.error(f"SendGrid API error: {result_container['error']}")
+                return False
+            return result_container.get('success', False)
+        else:
+            return _send_email_via_sendgrid_api(subject, sender, recipients, text_body, html_body)
     
     # Log email configuration (without sensitive data)
     current_app.logger.info(
@@ -140,6 +234,12 @@ def send_email(subject, sender, recipients, text_body, html_body, async_send=Tru
                 result = _send_email_sync(*args, **kwargs)
                 result_container['success'] = result
             except Exception as e:
+                # Log error in thread context for better debugging
+                from flask import current_app
+                current_app.logger.error(
+                    f"Exception in email sending thread: {str(e)}",
+                    exc_info=True
+                )
                 result_container['error'] = str(e)
                 result_container['success'] = False
         
@@ -151,12 +251,18 @@ def send_email(subject, sender, recipients, text_body, html_body, async_send=Tru
         thread.start()
         
         # Wait longer to catch connection errors (especially for SMTP connection issues)
-        # Most SMTP errors happen quickly, so 5 seconds should be enough
-        thread.join(timeout=5)
+        # On Render, SMTP connections can be slower, so we wait longer
+        is_render = os.environ.get('RENDER') is not None or 'render.com' in current_app.config.get('APP_URL', '').lower()
+        wait_timeout = 20 if is_render else 10  # 20 seconds on Render, 10 locally
+        current_app.logger.info(f"Waiting up to {wait_timeout} seconds for email to send...")
+        thread.join(timeout=wait_timeout)
         
         # Check for errors first
         if result_container['error']:
-            current_app.logger.error(f"Email sending failed: {result_container['error']}")
+            current_app.logger.error(
+                f"Email sending failed for {recipients}. Error: {result_container['error']}. "
+                f"Check logs above for full traceback."
+            )
             return False
         
         # Check if we got a result
@@ -165,16 +271,25 @@ def send_email(subject, sender, recipients, text_body, html_body, async_send=Tru
                 current_app.logger.info(f"Email sent successfully to {recipients}")
                 return True
             else:
-                current_app.logger.error(f"Email sending failed for {recipients}")
+                current_app.logger.error(
+                    f"Email sending failed for {recipients}. "
+                    f"This might indicate: sender not verified, API key issues, or network problems."
+                )
                 return False
         
-        # If we're here, the thread is still running (took more than 5 seconds)
-        # This is unusual for SMTP - usually means connection is hanging
-        # For local dev, wait a bit more; for production, log and return optimistically
-        is_local = 'localhost' in current_app.config.get('APP_URL', '') or '127.0.0.1' in current_app.config.get('APP_URL', '')
-        if is_local:
+        # If we're here, the thread is still running (took longer than wait_timeout)
+        # This is unusual for SMTP - usually means connection is hanging or very slow
+        if is_render:
+            # On Render, if it's taking this long, it's likely a network issue
+            # Log warning but return optimistically - email might still be sent in background
+            current_app.logger.warning(
+                f"Email sending is taking longer than {wait_timeout} seconds for {recipients}. "
+                f"This might indicate network issues. Email may still be sent in background."
+            )
+            return True  # Return optimistically on Render
+        else:
             # Local: wait a bit more to catch errors
-            thread.join(timeout=3)
+            thread.join(timeout=5)
             if result_container.get('error'):
                 current_app.logger.error(f"Email sending failed: {result_container['error']}")
                 return False
@@ -186,10 +301,6 @@ def send_email(subject, sender, recipients, text_body, html_body, async_send=Tru
             # Still no result - connection is hanging
             current_app.logger.warning(f"Email sending is taking longer than expected for {recipients}")
             return False
-        else:
-            # Production: return optimistically, email will be sent in background
-            current_app.logger.info(f"Email sending started in background for {recipients}")
-            return True
     else:
         # Synchronous sending for local development
         return _send_email_sync(subject, sender, recipients, text_body, html_body, current_app.app_context())
